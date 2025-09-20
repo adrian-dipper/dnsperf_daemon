@@ -9,7 +9,7 @@ DAEMON_LOGFILE="/var/log/${DAEMON_NAME}.log"
 DAEMON_WORKDIR="/var/lib/${DAEMON_NAME}"
 
 # DNS Performance configuration
-SLEEP_INTERVAL=300  # 5 minutes between tests
+SLEEP_INTERVAL=30  # 30 seconds between tests
 DNS_SERVER="1.1.1.1" # Default DNS server to test against
 QUERIES_PER_SECOND=20 # Number of queries per second dnsperf will wait for resolution of
 
@@ -164,9 +164,25 @@ daemon_main() {
     echo $$ > "$DAEMON_PIDFILE"
 
     while true; do
+        # Record start time
+        local start_time=$(date +%s)
+
         update_hosts >/dev/null 2>&1
         run_dns_test
-        sleep "$SLEEP_INTERVAL"
+
+        # Calculate elapsed time
+        local end_time=$(date +%s)
+        local elapsed_time=$((end_time - start_time))
+
+        # Calculate remaining sleep time
+        local remaining_sleep=$((SLEEP_INTERVAL - elapsed_time))
+
+        if [ $remaining_sleep -gt 0 ]; then
+            log_message "Test took ${elapsed_time}s, sleeping for ${remaining_sleep}s"
+            sleep "$remaining_sleep"
+        else
+            log_message "Test took ${elapsed_time}s (longer than interval of ${SLEEP_INTERVAL}s), running immediately"
+        fi
     done
 }
 
