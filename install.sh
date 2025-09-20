@@ -26,6 +26,24 @@ if ! command -v rc-update >/dev/null 2>&1; then
     exit 1
 fi
 
+# Check if this is an update or fresh installation
+EXISTING_INSTALLATION=false
+if [ -f "$DAEMON_PATH/dns_perf_backend.sh" ] || [ -f "/etc/init.d/dnsperf_daemon" ]; then
+    EXISTING_INSTALLATION=true
+    echo "Existing installation detected. Performing update..."
+
+    # Stop the daemon if it's running
+    if rc-service dnsperf_daemon status >/dev/null 2>&1; then
+        echo "Stopping running daemon..."
+        rc-service dnsperf_daemon stop
+        DAEMON_WAS_RUNNING=true
+    else
+        DAEMON_WAS_RUNNING=false
+    fi
+else
+    echo "Fresh installation detected..."
+fi
+
 # Check dependencies
 echo "Checking dependencies..."
 MISSING_DEPS=""
@@ -57,6 +75,15 @@ mkdir -p "$DAEMON_WORKDIR"
 mkdir -p "/var/log"
 mkdir -p "/var/run"
 
+# Backup existing configuration if updating
+if [ "$EXISTING_INSTALLATION" = true ]; then
+    echo "Backing up existing configuration..."
+    if [ -f "$DAEMON_PATH/dns_perf_backend.sh" ]; then
+        cp "$DAEMON_PATH/dns_perf_backend.sh" "$DAEMON_PATH/dns_perf_backend.sh.backup"
+        echo "  Backup created: $DAEMON_PATH/dns_perf_backend.sh.backup"
+    fi
+fi
+
 # Copy daemon script
 echo "Installing daemon script..."
 cp "$PROJECT_ROOT/bin/dns_perf_backend.sh" "$DAEMON_PATH/"
@@ -67,17 +94,35 @@ echo "Installing OpenRC init script..."
 cp "$PROJECT_ROOT/init/dnsperf_daemon" "/etc/init.d/"
 chmod +x "/etc/init.d/dnsperf_daemon"
 
-# Add service to default runlevel
-echo "Adding service to default runlevel..."
-rc-update add dnsperf_daemon default
+# Add service to default runlevel (only for fresh installations)
+if [ "$EXISTING_INSTALLATION" = false ]; then
+    echo "Adding service to default runlevel..."
+    rc-update add dnsperf_daemon default
+else
+    echo "Service already in runlevel, skipping rc-update add..."
+fi
 
 # Set permissions
 echo "Setting permissions..."
 chown -R "$DAEMON_USER:$DAEMON_USER" "$DAEMON_WORKDIR"
 chmod 755 "$DAEMON_WORKDIR"
 
+# Restart daemon if it was running before
+if [ "$EXISTING_INSTALLATION" = true ] && [ "$DAEMON_WAS_RUNNING" = true ]; then
+    echo "Restarting daemon..."
+    rc-service dnsperf_daemon start
+fi
+
 echo ""
-echo "Installation completed successfully!"
+if [ "$EXISTING_INSTALLATION" = true ]; then
+    echo "Update completed successfully!"
+    if [ -f "$DAEMON_PATH/dns_perf_backend.sh.backup" ]; then
+        echo "Note: Previous configuration backed up to $DAEMON_PATH/dns_perf_backend.sh.backup"
+    fi
+else
+    echo "Installation completed successfully!"
+fi
+
 echo ""
 echo "Configuration:"
 echo "  Daemon script: $DAEMON_PATH/dns_perf_backend.sh"
@@ -87,7 +132,7 @@ echo "  Latest result: $DAEMON_WORKDIR/latest_result.txt"
 echo ""
 echo "To customize the configuration, edit: $DAEMON_PATH/dns_perf_backend.sh"
 echo "Important settings:"
-echo "  - SLEEP_INTERVAL: Time between tests (default: 300 seconds)"
+echo "  - SLEEP_INTERVAL: Time between tests (default: 30 seconds)"
 echo "  - DNS_SERVER: DNS server to test (default: 1.1.1.1)"
 echo "  - QUERIES_PER_SECOND: Test intensity (default: 20)"
 echo ""
