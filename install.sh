@@ -10,6 +10,7 @@ DAEMON_USER="root"
 DAEMON_PATH="/usr/local/bin"
 DAEMON_WORKDIR="/var/lib/${DAEMON_NAME}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${SCRIPT_DIR}"
 
 echo "Installing DNS Performance Daemon for OpenRC..."
 
@@ -58,12 +59,12 @@ mkdir -p "/var/run"
 
 # Copy daemon script
 echo "Installing daemon script..."
-cp "$SCRIPT_DIR/dns_perf_backend.sh" "$DAEMON_PATH/"
+cp "$PROJECT_ROOT/bin/dns_perf_backend.sh" "$DAEMON_PATH/"
 chmod +x "$DAEMON_PATH/dns_perf_backend.sh"
 
 # Install OpenRC init script
 echo "Installing OpenRC init script..."
-cp "$SCRIPT_DIR/dnsperf_daemon" "/etc/init.d/"
+cp "$PROJECT_ROOT/init/dnsperf_daemon" "/etc/init.d/"
 chmod +x "/etc/init.d/dnsperf_daemon"
 
 # Add service to default runlevel

@@ -8,13 +8,16 @@ DAEMON_SCRIPT = dns_perf_backend.sh
 DAEMON_WORKDIR = /var/lib/$(DAEMON_NAME)
 DAEMON_LOGFILE = /var/log/$(DAEMON_NAME).log
 
+PROJECT_ROOT = $(shell pwd)
+INSTALL_SCRIPT = $(PROJECT_ROOT)/install.sh
+
 .PHONY: all install uninstall start stop restart status logs clean help
 
 all: help
 
 install:
 	@echo "Installing DNS Performance Daemon for OpenRC..."
-	@./install.sh
+	@$(INSTALL_SCRIPT)
 
 uninstall:
 	@echo "Uninstalling DNS Performance Daemon..."
@@ -87,3 +90,5 @@ help:
 	@echo "  make status           # Check status"
 	@echo "  make logs             # Monitor logs"
 	@echo "  make result           # View latest result"
+	@echo ""
+	@echo "Note: Run from the scripts/ directory or use full paths"
