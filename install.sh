@@ -9,6 +9,9 @@ DAEMON_NAME="dnsperf_daemon"
 DAEMON_USER="root"
 DAEMON_PATH="/usr/local/bin"
 DAEMON_WORKDIR="/var/lib/${DAEMON_NAME}"
+CONFIG_DIR="/etc"
+INIT_DIR="/etc/init.d"
+SYSTEMD_DIR="/etc/systemd/system"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${SCRIPT_DIR}"
 
@@ -28,7 +31,7 @@ fi
 
 # Check if this is an update or fresh installation
 EXISTING_INSTALLATION=false
-if [ -f "$DAEMON_PATH/dns_perf_backend.sh" ] || [ -f "/etc/init.d/dnsperf_daemon" ]; then
+if [ -f "$DAEMON_PATH/dns_perf_backend.sh" ] || [ -f "$INIT_DIR/dnsperf_daemon" ]; then
     EXISTING_INSTALLATION=true
     echo "Existing installation detected. Performing update..."
 
@@ -68,12 +71,20 @@ if [ -n "$MISSING_DEPS" ]; then
     exit 1
 fi
 
-# Create directories
-echo "Creating directories..."
+# Create directories with appropriate permissions
+echo "Creating system directories..."
 mkdir -p "$DAEMON_PATH"
 mkdir -p "$DAEMON_WORKDIR"
+mkdir -p "$CONFIG_DIR"
+mkdir -p "$INIT_DIR"
 mkdir -p "/var/log"
 mkdir -p "/var/run"
+
+# Set proper directory permissions
+chmod 755 "$DAEMON_PATH"
+chmod 755 "$DAEMON_WORKDIR"
+chmod 755 "$CONFIG_DIR"
+chmod 755 "$INIT_DIR"
 
 # Backup existing configuration if updating
 if [ "$EXISTING_INSTALLATION" = true ]; then
@@ -82,28 +93,89 @@ if [ "$EXISTING_INSTALLATION" = true ]; then
         cp "$DAEMON_PATH/dns_perf_backend.sh" "$DAEMON_PATH/dns_perf_backend.sh.backup"
         echo "  Backup created: $DAEMON_PATH/dns_perf_backend.sh.backup"
     fi
+
+    # Migrate old configuration file location if it exists
+    if [ -f "$DAEMON_PATH/dnsperf_daemon.conf" ]; then
+        echo "Migrating configuration from old location..."
+        if [ ! -f "$CONFIG_DIR/dnsperf_daemon.conf" ]; then
+            cp "$DAEMON_PATH/dnsperf_daemon.conf" "$CONFIG_DIR/"
+            chmod 644 "$CONFIG_DIR/dnsperf_daemon.conf"
+            chown root:root "$CONFIG_DIR/dnsperf_daemon.conf"
+            echo "  Configuration migrated: $DAEMON_PATH/dnsperf_daemon.conf -> $CONFIG_DIR/dnsperf_daemon.conf"
+            # Remove old config file after successful migration
+            rm "$DAEMON_PATH/dnsperf_daemon.conf"
+            echo "  Old configuration file removed from $DAEMON_PATH/"
+        else
+            echo "  Configuration already exists in $CONFIG_DIR/, keeping existing settings"
+            echo "  Old configuration file will be removed from $DAEMON_PATH/"
+            rm "$DAEMON_PATH/dnsperf_daemon.conf"
+        fi
+    fi
+
+    # Migrate other potential old file locations
+    OLD_LOCATIONS=(
+        "/usr/bin/dns_perf_backend.sh"
+        "/usr/sbin/dns_perf_backend.sh"
+        "/opt/dnsperf_daemon/dns_perf_backend.sh"
+    )
+
+    for old_location in "${OLD_LOCATIONS[@]}"; do
+        if [ -f "$old_location" ]; then
+            echo "Removing old daemon script from: $old_location"
+            rm "$old_location"
+        fi
+    done
+
+    # Clean up old init script locations
+    OLD_INIT_LOCATIONS=(
+        "/usr/local/etc/init.d/dnsperf_daemon"
+        "/opt/dnsperf_daemon/init/dnsperf_daemon"
+    )
+
+    for old_init in "${OLD_INIT_LOCATIONS[@]}"; do
+        if [ -f "$old_init" ]; then
+            echo "Removing old init script from: $old_init"
+            # Remove from runlevel first if it was added
+            if [ -x "$old_init" ]; then
+                rc-update del dnsperf_daemon default 2>/dev/null || true
+            fi
+            rm "$old_init"
+        fi
+    done
 fi
 
-# Copy daemon script
-echo "Installing daemon script..."
+# Install daemon script to /usr/local/bin/
+echo "Installing daemon script to $DAEMON_PATH/..."
 cp "$PROJECT_ROOT/bin/dns_perf_backend.sh" "$DAEMON_PATH/"
-chmod +x "$DAEMON_PATH/dns_perf_backend.sh"
+chmod 755 "$DAEMON_PATH/dns_perf_backend.sh"
+chown root:root "$DAEMON_PATH/dns_perf_backend.sh"
 
-# Install configuration file
-echo "Installing configuration file..."
-if [ ! -f "/etc/dnsperf_daemon.conf" ] || [ "$EXISTING_INSTALLATION" = false ]; then
-    cp "$PROJECT_ROOT/config/dnsperf_daemon.conf" "/etc/"
-    chmod 644 "/etc/dnsperf_daemon.conf"
-    echo "  Configuration installed: /etc/dnsperf_daemon.conf"
+# Install configuration file to /etc/
+echo "Installing configuration file to $CONFIG_DIR/..."
+if [ ! -f "$CONFIG_DIR/dnsperf_daemon.conf" ] || [ "$EXISTING_INSTALLATION" = false ]; then
+    cp "$PROJECT_ROOT/config/dnsperf_daemon.conf" "$CONFIG_DIR/"
+    chmod 644 "$CONFIG_DIR/dnsperf_daemon.conf"
+    chown root:root "$CONFIG_DIR/dnsperf_daemon.conf"
+    echo "  Configuration installed: $CONFIG_DIR/dnsperf_daemon.conf"
 else
     echo "  Configuration file exists, skipping to preserve settings"
     echo "  New template available at: $PROJECT_ROOT/config/dnsperf_daemon.conf"
 fi
 
-# Install OpenRC init script
-echo "Installing OpenRC init script..."
-cp "$PROJECT_ROOT/init/dnsperf_daemon" "/etc/init.d/"
-chmod +x "/etc/init.d/dnsperf_daemon"
+# Install OpenRC init script to /etc/init.d/
+echo "Installing OpenRC init script to $INIT_DIR/..."
+cp "$PROJECT_ROOT/init/dnsperf_daemon" "$INIT_DIR/"
+chmod 755 "$INIT_DIR/dnsperf_daemon"
+chown root:root "$INIT_DIR/dnsperf_daemon"
+
+# Install systemd service file (optional, for reference)
+if [ -d "$SYSTEMD_DIR" ]; then
+    echo "Installing systemd service file to $SYSTEMD_DIR/ (for reference)..."
+    cp "$PROJECT_ROOT/init/dnsperf_daemon.service" "$SYSTEMD_DIR/"
+    chmod 644 "$SYSTEMD_DIR/dnsperf_daemon.service"
+    chown root:root "$SYSTEMD_DIR/dnsperf_daemon.service"
+    echo "  Note: systemd service installed but OpenRC takes precedence"
+fi
 
 # Add service to default runlevel (only for fresh installations)
 if [ "$EXISTING_INSTALLATION" = false ]; then
@@ -113,7 +185,7 @@ else
     echo "Service already in runlevel, skipping rc-update add..."
 fi
 
-# Set permissions
+# Set proper ownership and permissions for working directory
 echo "Setting permissions..."
 chown -R "$DAEMON_USER:$DAEMON_USER" "$DAEMON_WORKDIR"
 chmod 755 "$DAEMON_WORKDIR"
@@ -135,12 +207,15 @@ else
 fi
 
 echo ""
-echo "Configuration:"
-echo "  Daemon script: $DAEMON_PATH/dns_perf_backend.sh"
-echo "  Configuration file: /etc/dnsperf_daemon.conf"
-echo "  Working directory: $DAEMON_WORKDIR"
+echo "Files installed in standard system locations:"
+echo "  Daemon executable: $DAEMON_PATH/dns_perf_backend.sh"
+echo "  Configuration: $CONFIG_DIR/dnsperf_daemon.conf"
+echo "  OpenRC init script: $INIT_DIR/dnsperf_daemon"
+if [ -f "$SYSTEMD_DIR/dnsperf_daemon.service" ]; then
+    echo "  Systemd service: $SYSTEMD_DIR/dnsperf_daemon.service (reference)"
+fi
+echo "  Runtime data: $DAEMON_WORKDIR/"
 echo "  Log file: /var/log/dnsperf_daemon.log"
-echo "  Latest result: $DAEMON_WORKDIR/latest_result.txt"
 echo ""
 echo "To customize the configuration, edit: /etc/dnsperf_daemon.conf"
 echo "Important settings:"
