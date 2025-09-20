@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-# DNS Performance Daemon Makefile
+# DNS Performance Daemon Makefile (OpenRC)
 
 DAEMON_NAME = dnsperf_daemon
 DAEMON_PATH = /usr/local/bin
@@ -13,25 +13,14 @@ DAEMON_LOGFILE = /var/log/$(DAEMON_NAME).log
 all: help
 
 install:
-	@echo "Installing DNS Performance Daemon..."
+	@echo "Installing DNS Performance Daemon for OpenRC..."
 	@./install.sh
 
 uninstall:
 	@echo "Uninstalling DNS Performance Daemon..."
-	@if systemctl --version >/dev/null 2>&1; then \
-		systemctl stop $(DAEMON_NAME) 2>/dev/null || true; \
-		systemctl disable $(DAEMON_NAME) 2>/dev/null || true; \
-		rm -f /etc/systemd/system/$(DAEMON_NAME).service; \
-		systemctl daemon-reload; \
-	elif [ -f /etc/init.d/$(DAEMON_NAME) ]; then \
-		service $(DAEMON_NAME) stop 2>/dev/null || true; \
-		if command -v chkconfig >/dev/null 2>&1; then \
-			chkconfig $(DAEMON_NAME) off 2>/dev/null || true; \
-		elif command -v update-rc.d >/dev/null 2>&1; then \
-			update-rc.d $(DAEMON_NAME) remove 2>/dev/null || true; \
-		fi; \
-		rm -f /etc/init.d/$(DAEMON_NAME); \
-	fi
+	@rc-service $(DAEMON_NAME) stop 2>/dev/null || true
+	@rc-update del $(DAEMON_NAME) default 2>/dev/null || true
+	@rm -f /etc/init.d/$(DAEMON_NAME)
 	@rm -f $(DAEMON_PATH)/$(DAEMON_SCRIPT)
 	@rm -rf $(DAEMON_WORKDIR)
 	@rm -f $(DAEMON_LOGFILE)
@@ -39,72 +28,62 @@ uninstall:
 	@echo "Uninstallation completed."
 
 start:
-	@if systemctl --version >/dev/null 2>&1; then \
-		systemctl start $(DAEMON_NAME); \
-	else \
-		service $(DAEMON_NAME) start; \
-	fi
+	@rc-service $(DAEMON_NAME) start
 
 stop:
-	@if systemctl --version >/dev/null 2>&1; then \
-		systemctl stop $(DAEMON_NAME); \
-	else \
-		service $(DAEMON_NAME) stop; \
-	fi
+	@rc-service $(DAEMON_NAME) stop
 
 restart:
-	@if systemctl --version >/dev/null 2>&1; then \
-		systemctl restart $(DAEMON_NAME); \
-	else \
-		service $(DAEMON_NAME) restart; \
-	fi
+	@rc-service $(DAEMON_NAME) restart
 
 status:
-	@if systemctl --version >/dev/null 2>&1; then \
-		systemctl status $(DAEMON_NAME); \
-	else \
-		service $(DAEMON_NAME) status; \
-	fi
+	@rc-service $(DAEMON_NAME) status
 
 logs:
-	@if systemctl --version >/dev/null 2>&1; then \
-		journalctl -u $(DAEMON_NAME) -f; \
-	else \
-		tail -f $(DAEMON_LOGFILE); \
-	fi
+	@tail -f $(DAEMON_LOGFILE)
 
-results:
-	@echo "Recent DNS performance results:"
-	@tail -20 $(DAEMON_WORKDIR)/dns_results.txt 2>/dev/null || echo "No results file found"
+result:
+	@echo "Latest DNS performance result:"
+	@cat $(DAEMON_WORKDIR)/latest_result.txt 2>/dev/null || echo "No result file found"
 
 clean:
 	@echo "Cleaning temporary files..."
 	@rm -f $(DAEMON_WORKDIR)/*.zip $(DAEMON_WORKDIR)/*.csv
 	@echo "Temporary files cleaned."
 
-test-standalone:
-	@echo "Running standalone test..."
-	@$(DAEMON_PATH)/$(DAEMON_SCRIPT)
+add-runlevel:
+	@echo "Adding to runlevel..."
+	@rc-update add $(DAEMON_NAME) default
+
+del-runlevel:
+	@echo "Removing from runlevel..."
+	@rc-update del $(DAEMON_NAME) default
+
+show-runlevels:
+	@echo "Current runlevel configuration:"
+	@rc-update show | grep $(DAEMON_NAME) || echo "Service not found in any runlevel"
 
 help:
-	@echo "DNS Performance Daemon Management"
+	@echo "DNS Performance Daemon Management (OpenRC)"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  install      - Install the daemon and enable service"
-	@echo "  uninstall    - Remove daemon and all files"
-	@echo "  start        - Start the daemon"
-	@echo "  stop         - Stop the daemon"
-	@echo "  restart      - Restart the daemon"
-	@echo "  status       - Show daemon status"
-	@echo "  logs         - Show daemon logs (follow mode)"
-	@echo "  results      - Show recent DNS test results"
-	@echo "  clean        - Clean temporary files"
-	@echo "  test-standalone - Run a single test in standalone mode"
-	@echo "  help         - Show this help"
+	@echo "  install         - Install the daemon and add to default runlevel"
+	@echo "  uninstall       - Remove daemon and all files"
+	@echo "  start           - Start the daemon"
+	@echo "  stop            - Stop the daemon"
+	@echo "  restart         - Restart the daemon"
+	@echo "  status          - Show daemon status"
+	@echo "  logs            - Show daemon logs (follow mode)"
+	@echo "  result          - Show latest DNS test result"
+	@echo "  clean           - Clean temporary files"
+	@echo "  add-runlevel    - Add service to default runlevel"
+	@echo "  del-runlevel    - Remove service from default runlevel"
+	@echo "  show-runlevels  - Show current runlevel configuration"
+	@echo "  help            - Show this help"
 	@echo ""
 	@echo "Examples:"
-	@echo "  sudo make install    # Install daemon"
-	@echo "  sudo make start      # Start daemon"
-	@echo "  make status          # Check status"
-	@echo "  make logs            # Monitor logs"
-	@echo "  make results         # View results"
+	@echo "  sudo make install     # Install daemon"
+	@echo "  sudo make start       # Start daemon"
+	@echo "  make status           # Check status"
+	@echo "  make logs             # Monitor logs"
+	@echo "  make result           # View latest result"

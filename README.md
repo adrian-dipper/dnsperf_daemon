@@ -1,7 +1,7 @@
-# DNS Performance Daemon
+# DNS Performance Daemon (OpenRC)
 
-Ein Daemon zum kontinuierlichen Monitoring der DNS-Performance, der regelmäßig DNS-Antwortzeiten testet und die
-Ergebnisse protokolliert.
+Ein Daemon zum kontinuierlichen Monitoring der DNS-Performance, der regelmäßig DNS-Antwortzeiten testet und das neueste
+Ergebnis speichert.
 
 ## Features
 
@@ -9,12 +9,12 @@ Ergebnisse protokolliert.
 - Tägliche Aktualisierung der Top-1000-Domains von Cisco Umbrella
 - Kombiniert statische Host-Liste mit aktuellen Top-Domains
 - Automatisches Logging aller Aktivitäten
-- Speichert Testergebnisse mit Zeitstempel in CSV-Format
-- Unterstützt sowohl systemd als auch traditionelle RC-Skripte
-- Rückwärtskompatibilität für Standalone-Ausführung
+- Speichert nur das neueste Testergebnis (überschreibt vorherige Werte)
+- OpenRC-kompatibel für einfache Integration mit `rc-update`
 
 ## Anforderungen
 
+- OpenRC Init-System
 - `dnsperf` Tool (DNS Performance Testing Tool)
 - `wget` für Domain-Liste Download
 - `unzip` für Archiv-Extraktion
@@ -22,23 +22,16 @@ Ergebnisse protokolliert.
 
 ### Installation der Abhängigkeiten
 
-**Ubuntu/Debian:**
-
+**Gentoo/Alpine Linux:**
 ```bash
-sudo apt-get update
-sudo apt-get install dnsperf wget unzip
+# Gentoo
+emerge -av net-dns/bind-tools net-misc/wget app-arch/unzip
+
+# Alpine
+apk add bind-tools wget unzip
+
+# dnsperf muss möglicherweise aus den Quellen kompiliert werden
 ```
-
-**RHEL/CentOS/Fedora:**
-
-```bash
-sudo yum install bind-utils wget unzip
-# oder
-sudo dnf install bind-utils wget unzip
-```
-
-**Hinweis:** `dnsperf` ist möglicherweise nicht in allen Standard-Repositories verfügbar und muss eventuell aus den
-Quellen kompiliert werden.
 
 ## Installation
 
@@ -46,81 +39,44 @@ Quellen kompiliert werden.
 2. Installationsskript ausführen:
 
 ```bash
-sudo chmod +x install.sh
-sudo ./install.sh
+chmod +x install.sh
+./install.sh
 ```
 
-Das Skript erkennt automatisch das Init-System (systemd oder SysV) und installiert entsprechend.
+Das Skript prüft automatisch OpenRC-Verfügbarkeit und installiert entsprechend.
 
 ## Manuelle Installation
 
-### Für systemd-Systeme:
-
 ```bash
 # Daemon-Skript kopieren
-sudo cp dns_perf_backend.sh /usr/local/bin/
-sudo chmod +x /usr/local/bin/dns_perf_backend.sh
+cp dns_perf_backend.sh /usr/local/bin/
+chmod +x /usr/local/bin/dns_perf_backend.sh
 
-# Service-Datei kopieren
-sudo cp dnsperf_daemon.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable dnsperf_daemon
-```
+# OpenRC Init-Skript kopieren
+cp dnsperf_daemon /etc/init.d/
+chmod +x /etc/init.d/dnsperf_daemon
 
-### Für SysV-Init-Systeme:
-
-```bash
-# Daemon-Skript kopieren
-sudo cp dns_perf_backend.sh /usr/local/bin/
-sudo chmod +x /usr/local/bin/dns_perf_backend.sh
-
-# RC-Skript kopieren
-sudo cp dnsperf_daemon /etc/init.d/
-sudo chmod +x /etc/init.d/dnsperf_daemon
-
-# Service aktivieren (RHEL/CentOS)
-sudo chkconfig --add dnsperf_daemon
-sudo chkconfig dnsperf_daemon on
-
-# Service aktivieren (Debian/Ubuntu)
-sudo update-rc.d dnsperf_daemon defaults
+# Service zum default runlevel hinzufügen
+rc-update add dnsperf_daemon default
 ```
 
 ## Verwendung
 
-### Systemd-Systeme:
-
 ```bash
 # Daemon starten
-sudo systemctl start dnsperf_daemon
+rc-service dnsperf_daemon start
 
 # Status prüfen
-sudo systemctl status dnsperf_daemon
+rc-service dnsperf_daemon status
 
 # Daemon stoppen
-sudo systemctl stop dnsperf_daemon
+rc-service dnsperf_daemon stop
 
 # Daemon neustarten
-sudo systemctl restart dnsperf_daemon
+rc-service dnsperf_daemon restart
 
-# Logs anzeigen
-sudo journalctl -u dnsperf_daemon -f
-```
-
-### SysV-Init-Systeme:
-
-```bash
-# Daemon starten
-sudo service dnsperf_daemon start
-
-# Status prüfen
-sudo service dnsperf_daemon status
-
-# Daemon stoppen
-sudo service dnsperf_daemon stop
-
-# Daemon neustarten
-sudo service dnsperf_daemon restart
+# Service aus runlevel entfernen
+rc-update del dnsperf_daemon default
 ```
 
 ## Konfiguration
@@ -137,85 +93,83 @@ QUERIES_PER_SECOND=20  # Anfragen pro Sekunde beim Test
 ## Dateien und Pfade
 
 - **Daemon-Skript:** `/usr/local/bin/dns_perf_backend.sh`
+- **OpenRC Init-Skript:** `/etc/init.d/dnsperf_daemon`
 - **PID-Datei:** `/var/run/dnsperf_daemon.pid`
 - **Log-Datei:** `/var/log/dnsperf_daemon.log`
 - **Arbeitsverzeichnis:** `/var/lib/dnsperf_daemon/`
-- **Ergebnisdatei:** `/var/lib/dnsperf_daemon/dns_results.txt`
+- **Neuestes Ergebnis:** `/var/lib/dnsperf_daemon/latest_result.txt`
 - **Domain-Listen:** `/var/lib/dnsperf_daemon/top_domains.txt`
 
 ## Überwachung
 
 ### Log-Datei überwachen:
-
 ```bash
-sudo tail -f /var/log/dnsperf_daemon.log
+tail -f /var/log/dnsperf_daemon.log
 ```
 
-### Ergebnisse anzeigen:
-
+### Neuestes Ergebnis anzeigen:
 ```bash
-sudo tail -f /var/lib/dnsperf_daemon/dns_results.txt
+cat /var/lib/dnsperf_daemon/latest_result.txt
 ```
 
-### Aktuelle Performance anzeigen:
-
+### Service-Status überwachen:
 ```bash
-sudo tail -10 /var/lib/dnsperf_daemon/dns_results.txt
-```
-
-## Standalone-Verwendung
-
-Das Skript kann auch weiterhin im Standalone-Modus verwendet werden (für Rückwärtskompatibilität):
-
-```bash
-/usr/local/bin/dns_perf_backend.sh
+rc-service dnsperf_daemon status
 ```
 
 ## Fehlerbehebung
 
 ### Daemon startet nicht:
-
 1. Abhängigkeiten prüfen: `which dnsperf wget unzip`
-2. Berechtigungen prüfen: `ls -la /usr/local/bin/dns_perf_backend.sh`
-3. Log-Datei überprüfen: `sudo cat /var/log/dnsperf_daemon.log`
+2. OpenRC verfügbar: `which rc-update rc-service`
+3. Berechtigungen prüfen: `ls -la /usr/local/bin/dns_perf_backend.sh`
+4. Log-Datei überprüfen: `cat /var/log/dnsperf_daemon.log`
 
 ### Keine Testergebnisse:
-
 1. DNS-Server erreichbarkeit testen: `nslookup google.de 1.1.1.1`
 2. dnsperf manuell testen: `echo "google.de A" | dnsperf -s 1.1.1.1`
 
 ### Hoher CPU-Verbrauch:
-
 - `QUERIES_PER_SECOND` reduzieren
 - `SLEEP_INTERVAL` erhöhen
 
+## OpenRC Runlevel Management
+
+```bash
+# Service zu verschiedenen runlevels hinzufügen
+rc-update add dnsperf_daemon default    # Standard runlevel
+rc-update add dnsperf_daemon boot       # Boot runlevel
+
+# Alle Services in einem runlevel anzeigen
+rc-update show default
+
+# Service-Status für alle runlevels anzeigen
+rc-update show
+```
+
 ## Deinstallation
 
-### Systemd:
-
 ```bash
-sudo systemctl stop dnsperf_daemon
-sudo systemctl disable dnsperf_daemon
-sudo rm /etc/systemd/system/dnsperf_daemon.service
-sudo systemctl daemon-reload
+# Service stoppen und entfernen
+rc-service dnsperf_daemon stop
+rc-update del dnsperf_daemon default
+
+# Dateien entfernen
+rm /etc/init.d/dnsperf_daemon
+rm /usr/local/bin/dns_perf_backend.sh
+rm -rf /var/lib/dnsperf_daemon
+rm /var/log/dnsperf_daemon.log
+rm /var/run/dnsperf_daemon.pid
 ```
 
-### SysV:
+## Beispiel-Output
 
-```bash
-sudo service dnsperf_daemon stop
-sudo chkconfig dnsperf_daemon off  # oder: sudo update-rc.d dnsperf_daemon remove
-sudo rm /etc/init.d/dnsperf_daemon
+Das neueste Ergebnis wird in folgendem Format gespeichert:
+```
+2025-01-21 14:30:25,12.34
 ```
 
-### Dateien entfernen:
-
-```bash
-sudo rm /usr/local/bin/dns_perf_backend.sh
-sudo rm -rf /var/lib/dnsperf_daemon
-sudo rm /var/log/dnsperf_daemon.log
-sudo rm /var/run/dnsperf_daemon.pid
-```
+Wobei `12.34` die durchschnittliche Latenz in Millisekunden ist.
 
 ## Lizenz
 

@@ -6,7 +6,6 @@ DAEMON_USER="root"
 DAEMON_PATH="/usr/local/bin"
 DAEMON_PIDFILE="/var/run/${DAEMON_NAME}.pid"
 DAEMON_LOGFILE="/var/log/${DAEMON_NAME}.log"
-DAEMON_LOCKFILE="/var/lock/subsys/${DAEMON_NAME}"
 DAEMON_WORKDIR="/var/lib/${DAEMON_NAME}"
 
 # DNS Performance configuration
@@ -22,7 +21,7 @@ declare TEMP_FILE="$DAEMON_WORKDIR/top_domains.txt"
 declare DNSPERF_FILE="$DAEMON_WORKDIR/dns_perf.txt"
 declare DNSPERF_FILE_SORTED="$DAEMON_WORKDIR/dns_perf_sorted.txt"
 declare TODAY_DNSPERF_LOG="$DAEMON_WORKDIR/today_dnsperf_log.txt"
-declare RESULTS_FILE="$DAEMON_WORKDIR/dns_results.txt"
+declare LATEST_RESULT_FILE="$DAEMON_WORKDIR/latest_result.txt"
 
 # Current date
 declare current_day=""
@@ -70,7 +69,7 @@ setup_daemon() {
 # Signal handlers
 cleanup() {
     log_message "Daemon received shutdown signal"
-    rm -f "$DAEMON_PIDFILE" "$DAEMON_LOCKFILE"
+    rm -f "$DAEMON_PIDFILE"
     exit 0
 }
 
@@ -148,7 +147,8 @@ run_dns_test() {
 
     if [ -n "$result" ]; then
         local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        echo "$timestamp,$result" >> "$RESULTS_FILE"
+        # Store only the latest result, overwriting previous value
+        echo "$timestamp,$result" > "$LATEST_RESULT_FILE"
         log_message "DNS test completed - Average Latency: ${result}ms"
     else
         log_message "DNS test failed or returned no results"
@@ -162,7 +162,6 @@ daemon_main() {
 
     # Create PID file
     echo $$ > "$DAEMON_PIDFILE"
-    touch "$DAEMON_LOCKFILE"
 
     while true; do
         update_hosts >/dev/null 2>&1
@@ -171,21 +170,5 @@ daemon_main() {
     done
 }
 
-# Check if running as daemon or standalone
-if [ "${1:-}" = "daemon" ]; then
-    daemon_main
-else
-    # Original standalone behavior for backwards compatibility
-    update_hosts >/dev/null 2>&1
-
-    echo "" >"$DNSPERF_FILE"
-    for host in "${HOSTS[@]}"; do
-        echo "$host A" >>"$DNSPERF_FILE"
-        echo "$host AAAA" >>"$DNSPERF_FILE"
-    done
-
-    cat "$DNSPERF_FILE" | sort | uniq >"$DNSPERF_FILE_SORTED"
-    echo "Content-type: text/plain"
-    echo ""
-    dnsperf -W -q 20 -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" | grep "Average Latency" | cut -d" " -f7
-fi
+# Run daemon
+daemon_main
