@@ -12,7 +12,7 @@ CONFIG_FILE="/etc/dnsperf_daemon.conf"
 # Load configuration from file
 load_config() {
     if [ -f "$CONFIG_FILE" ]; then
-        # shellcheck source=dnsperf_daemon.conf
+        # shellcheck source=../config/dnsperf_daemon.conf
         source "$CONFIG_FILE"
         log_message "Configuration loaded from $CONFIG_FILE"
     else

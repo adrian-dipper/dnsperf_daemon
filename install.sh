@@ -92,12 +92,12 @@ chmod +x "$DAEMON_PATH/dns_perf_backend.sh"
 # Install configuration file
 echo "Installing configuration file..."
 if [ ! -f "/etc/dnsperf_daemon.conf" ] || [ "$EXISTING_INSTALLATION" = false ]; then
-    cp "$PROJECT_ROOT/bin/dnsperf_daemon.conf" "/etc/"
+    cp "$PROJECT_ROOT/config/dnsperf_daemon.conf" "/etc/"
     chmod 644 "/etc/dnsperf_daemon.conf"
     echo "  Configuration installed: /etc/dnsperf_daemon.conf"
 else
     echo "  Configuration file exists, skipping to preserve settings"
-    echo "  New template available at: $PROJECT_ROOT/bin/dnsperf_daemon.conf"
+    echo "  New template available at: $PROJECT_ROOT/config/dnsperf_daemon.conf"
 fi
 
 # Install OpenRC init script

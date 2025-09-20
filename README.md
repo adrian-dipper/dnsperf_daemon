@@ -129,8 +129,9 @@ rc-service dnsperf_daemon reload
 
 ## Ordnerstruktur
 
-- `bin/` - Ausführbare Skripte
-- `init/` - OpenRC Init-System Dateien
+- `bin/` - Ausführbare Skripte (Daemon-Skript)
+- `config/` - Konfigurationsdateien
+- `init/` - OpenRC Init-System Dateien  
 - `install.sh` - Installationsskript
 - `Makefile` - Build- und Verwaltungsskript
 
