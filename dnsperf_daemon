@@ -1,0 +1,178 @@
+#!/bin/bash
+#
+# dnsperf_daemon        DNS Performance Monitoring Daemon
+#
+# chkconfig: 35 80 20
+# description: DNS Performance monitoring daemon that continuously tests DNS response times
+#
+### BEGIN INIT INFO
+# Provides: dnsperf_daemon
+# Required-Start: $network $local_fs
+# Required-Stop: $network $local_fs
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: DNS Performance Daemon
+# Description: Monitors DNS performance by testing response times periodically
+### END INIT INFO
+
+# Source function library.
+if [ -f /etc/rc.d/init.d/functions ]; then
+    . /etc/rc.d/init.d/functions
+elif [ -f /etc/init.d/functions ]; then
+    . /etc/init.d/functions
+elif [ -f /lib/lsb/init-functions ]; then
+    . /lib/lsb/init-functions
+fi
+
+# Daemon configuration
+DAEMON_NAME="dnsperf_daemon"
+DAEMON_USER="root"
+DAEMON_PATH="/usr/local/bin"
+DAEMON_SCRIPT="$DAEMON_PATH/dns_perf_backend.sh"
+DAEMON_PIDFILE="/var/run/${DAEMON_NAME}.pid"
+DAEMON_LOGFILE="/var/log/${DAEMON_NAME}.log"
+DAEMON_LOCKFILE="/var/lock/subsys/${DAEMON_NAME}"
+
+start() {
+    echo -n "Starting $DAEMON_NAME: "
+
+    # Check if already running
+    if [ -f "$DAEMON_PIDFILE" ]; then
+        PID=$(cat "$DAEMON_PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "already running (PID: $PID)"
+            return 1
+        else
+            # Remove stale PID file
+            rm -f "$DAEMON_PIDFILE"
+        fi
+    fi
+
+    # Check if daemon script exists
+    if [ ! -x "$DAEMON_SCRIPT" ]; then
+        echo "FAILED - daemon script not found or not executable: $DAEMON_SCRIPT"
+        return 1
+    fi
+
+    # Start the daemon
+    if command -v daemon >/dev/null 2>&1; then
+        # RHEL/CentOS style
+        daemon --user="$DAEMON_USER" --pidfile="$DAEMON_PIDFILE" \
+               "$DAEMON_SCRIPT daemon" >/dev/null 2>&1 &
+    elif command -v start-stop-daemon >/dev/null 2>&1; then
+        # Debian/Ubuntu style
+        start-stop-daemon --start --quiet --pidfile "$DAEMON_PIDFILE" \
+                         --make-pidfile --background --chuid "$DAEMON_USER" \
+                         --exec "$DAEMON_SCRIPT" -- daemon
+    else
+        # Generic approach
+        su -l "$DAEMON_USER" -c "$DAEMON_SCRIPT daemon" >/dev/null 2>&1 &
+        echo $! > "$DAEMON_PIDFILE"
+    fi
+
+    # Wait a moment and check if it started successfully
+    sleep 2
+    if [ -f "$DAEMON_PIDFILE" ]; then
+        PID=$(cat "$DAEMON_PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            touch "$DAEMON_LOCKFILE"
+            echo "OK"
+            return 0
+        fi
+    fi
+
+    echo "FAILED"
+    return 1
+}
+
+stop() {
+    echo -n "Stopping $DAEMON_NAME: "
+
+    if [ ! -f "$DAEMON_PIDFILE" ]; then
+        echo "not running"
+        return 0
+    fi
+
+    PID=$(cat "$DAEMON_PIDFILE")
+
+    # Try graceful shutdown first
+    if kill -TERM "$PID" 2>/dev/null; then
+        # Wait for graceful shutdown
+        for i in {1..10}; do
+            if ! kill -0 "$PID" 2>/dev/null; then
+                break
+            fi
+            sleep 1
+        done
+
+        # Force kill if still running
+        if kill -0 "$PID" 2>/dev/null; then
+            kill -KILL "$PID" 2>/dev/null
+            sleep 1
+        fi
+    fi
+
+    # Clean up
+    rm -f "$DAEMON_PIDFILE" "$DAEMON_LOCKFILE"
+    echo "OK"
+    return 0
+}
+
+status() {
+    if [ -f "$DAEMON_PIDFILE" ]; then
+        PID=$(cat "$DAEMON_PIDFILE")
+        if kill -0 "$PID" 2>/dev/null; then
+            echo "$DAEMON_NAME is running (PID: $PID)"
+            return 0
+        else
+            echo "$DAEMON_NAME is not running (stale PID file)"
+            return 1
+        fi
+    else
+        echo "$DAEMON_NAME is not running"
+        return 3
+    fi
+}
+
+restart() {
+    stop
+    sleep 2
+    start
+}
+
+reload() {
+    echo -n "Reloading $DAEMON_NAME: "
+    if [ -f "$DAEMON_PIDFILE" ]; then
+        PID=$(cat "$DAEMON_PIDFILE")
+        if kill -HUP "$PID" 2>/dev/null; then
+            echo "OK"
+            return 0
+        fi
+    fi
+    echo "FAILED"
+    return 1
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status
+        ;;
+    restart)
+        restart
+        ;;
+    reload|force-reload)
+        reload
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|status|restart|reload|force-reload}"
+        exit 1
+        ;;
+esac
+
+exit $?
