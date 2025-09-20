@@ -52,3 +52,20 @@ start_post() {
 stop_post() {
     einfo "${name} stopped"
 }
+
+reload() {
+    einfo "Reloading ${name} configuration..."
+    if [ -f "${pidfile}" ]; then
+        pid=$(cat "${pidfile}")
+        if kill -HUP "${pid}" 2>/dev/null; then
+            einfo "${name} configuration reloaded successfully"
+            return 0
+        else
+            eerror "Failed to send reload signal to ${name}"
+            return 1
+        fi
+    else
+        eerror "${name} is not running"
+        return 1
+    fi
+}

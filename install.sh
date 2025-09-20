@@ -89,6 +89,17 @@ echo "Installing daemon script..."
 cp "$PROJECT_ROOT/bin/dns_perf_backend.sh" "$DAEMON_PATH/"
 chmod +x "$DAEMON_PATH/dns_perf_backend.sh"
 
+# Install configuration file
+echo "Installing configuration file..."
+if [ ! -f "/etc/dnsperf_daemon.conf" ] || [ "$EXISTING_INSTALLATION" = false ]; then
+    cp "$PROJECT_ROOT/bin/dnsperf_daemon.conf" "/etc/"
+    chmod 644 "/etc/dnsperf_daemon.conf"
+    echo "  Configuration installed: /etc/dnsperf_daemon.conf"
+else
+    echo "  Configuration file exists, skipping to preserve settings"
+    echo "  New template available at: $PROJECT_ROOT/bin/dnsperf_daemon.conf"
+fi
+
 # Install OpenRC init script
 echo "Installing OpenRC init script..."
 cp "$PROJECT_ROOT/init/dnsperf_daemon" "/etc/init.d/"
@@ -126,15 +137,20 @@ fi
 echo ""
 echo "Configuration:"
 echo "  Daemon script: $DAEMON_PATH/dns_perf_backend.sh"
+echo "  Configuration file: /etc/dnsperf_daemon.conf"
 echo "  Working directory: $DAEMON_WORKDIR"
 echo "  Log file: /var/log/dnsperf_daemon.log"
 echo "  Latest result: $DAEMON_WORKDIR/latest_result.txt"
 echo ""
-echo "To customize the configuration, edit: $DAEMON_PATH/dns_perf_backend.sh"
+echo "To customize the configuration, edit: /etc/dnsperf_daemon.conf"
 echo "Important settings:"
 echo "  - SLEEP_INTERVAL: Time between tests (default: 30 seconds)"
 echo "  - DNS_SERVER: DNS server to test (default: 1.1.1.1)"
 echo "  - QUERIES_PER_SECOND: Test intensity (default: 20)"
+echo "  - DOMAIN_COUNT: Number of domains to download (default: 1000)"
+echo ""
+echo "After changing configuration, reload with:"
+echo "  rc-service dnsperf_daemon reload"
 echo ""
 echo "Start the daemon with:"
 echo "  rc-service dnsperf_daemon start"

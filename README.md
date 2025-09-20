@@ -102,13 +102,29 @@ rc-update del dnsperf_daemon default
 
 ## Konfiguration
 
-Die Konfiguration erfolgt durch Bearbeitung der Variablen am Anfang von `/usr/local/bin/dns_perf_backend.sh`:
+Die Konfiguration erfolgt über die Datei `/etc/dnsperf_daemon.conf`:
 
 ```bash
 # DNS Performance configuration
 SLEEP_INTERVAL=30  # Sekunden zwischen Tests (Standard: 30 Sekunden)
 DNS_SERVER="1.1.1.1"  # Zu testender DNS-Server
 QUERIES_PER_SECOND=20  # Anfragen pro Sekunde beim Test
+
+# Domain list configuration
+URL="http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip"
+DOMAIN_COUNT=1000  # Number of domains to extract from the list
+
+# Static host list
+STATIC_HOSTS=(
+"google.de"
+"youtube.com"
+# ... weitere Hosts ...
+)
+```
+
+Nach Änderungen an der Konfiguration laden Sie diese mit:
+```bash
+rc-service dnsperf_daemon reload
 ```
 
 ## Ordnerstruktur
@@ -121,6 +137,7 @@ QUERIES_PER_SECOND=20  # Anfragen pro Sekunde beim Test
 ## Dateien und Pfade
 
 - **Daemon-Skript:** `/usr/local/bin/dns_perf_backend.sh`
+- **Konfigurationsdatei:** `/etc/dnsperf_daemon.conf`
 - **OpenRC Init-Skript:** `/etc/init.d/dnsperf_daemon`
 - **PID-Datei:** `/var/run/dnsperf_daemon.pid`
 - **Log-Datei:** `/var/log/dnsperf_daemon.log`
