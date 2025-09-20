@@ -94,7 +94,8 @@ update_hosts() {
         echo "$current_day" >"$TODAY_DNSPERF_LOG"
 
         # 1. Download der ZIP
-        if wget -N "$URL" -O "$ZIPFILE" >/dev/null 2>&1; then
+        log_message "Executing wget to download domain list..."
+        if wget -N "$URL" -O "$ZIPFILE" >> "$DAEMON_LOGFILE" 2>&1; then
             log_message "Successfully downloaded domain list"
         else
             log_message "Failed to download domain list, using existing file"
@@ -105,7 +106,8 @@ update_hosts() {
         fi
 
         # 2. CSV aus ZIP extrahieren und Top 100 Domains filtern
-        if unzip -o "$ZIPFILE" -d "$DAEMON_WORKDIR" >/dev/null 2>&1; then
+        log_message "Executing unzip to extract domain list..."
+        if unzip -o "$ZIPFILE" -d "$DAEMON_WORKDIR" >> "$DAEMON_LOGFILE" 2>&1; then
             head -n 1000 "$CSVFILE" | cut -d, -f2 | sed 's/\r$//g' >"$TEMP_FILE"
             log_message "Successfully extracted and filtered domains"
         else
