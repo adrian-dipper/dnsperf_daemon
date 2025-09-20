@@ -147,8 +147,8 @@ run_dns_test() {
 
     if [ -n "$result" ]; then
         local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-        # Store only the latest result, overwriting previous value
-        echo "$timestamp,$result" > "$LATEST_RESULT_FILE"
+        # Store only the latest result (value only, no timestamp)
+        echo "$result" > "$LATEST_RESULT_FILE"
         log_message "DNS test completed - Average Latency: ${result}ms"
     else
         log_message "DNS test failed or returned no results"

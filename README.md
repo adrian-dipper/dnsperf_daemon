@@ -5,7 +5,7 @@ testet und das neueste Ergebnis speichert.
 
 ## Features
 
-- Kontinuierliche DNS-Performance-Tests alle 5 Minuten (konfigurierbar)
+- Kontinuierliche DNS-Performance-Tests alle 30 Sekunden (konfigurierbar)
 - Tägliche Aktualisierung der Top-1000-Domains von Cisco Umbrella
 - Kombiniert statische Host-Liste mit aktuellen Top-Domains
 - Automatisches Logging aller Aktivitäten
@@ -106,7 +106,7 @@ Die Konfiguration erfolgt durch Bearbeitung der Variablen am Anfang von `/usr/lo
 
 ```bash
 # DNS Performance configuration
-SLEEP_INTERVAL=300  # Sekunden zwischen Tests (Standard: 5 Minuten)
+SLEEP_INTERVAL=30  # Sekunden zwischen Tests (Standard: 30 Sekunden)
 DNS_SERVER="1.1.1.1"  # Zu testender DNS-Server
 QUERIES_PER_SECOND=20  # Anfragen pro Sekunde beim Test
 ```
@@ -210,13 +210,12 @@ rm /var/run/dnsperf_daemon.pid
 
 ## Beispiel-Output
 
-Das neueste Ergebnis wird in folgendem Format gespeichert:
-
+Das neueste Ergebnis wird nur als numerischer Wert gespeichert:
 ```
-2025-01-21 14:30:25,12.34
+12.34
 ```
 
-Wobei `12.34` die durchschnittliche Latenz in Millisekunden ist.
+Wobei `12.34` die durchschnittliche Latenz in Millisekunden ist. Das Datum und die Uhrzeit sind im Log verfügbar.
 
 ## Lizenz
 
