@@ -56,7 +56,12 @@ apk add bind-tools wget unzip
 2. Installationsskript ausführen:
 
 ```bash
+# Auf Linux/Unix-Systemen:
+chmod +x install.sh
 sudo ./install.sh
+
+# Oder explizit mit bash:
+sudo bash install.sh
 ```
 
 Das Skript prüft automatisch OpenRC-Verfügbarkeit und installiert entsprechend.
