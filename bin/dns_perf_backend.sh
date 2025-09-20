@@ -2,8 +2,8 @@
 
 # Daemon configuration
 DAEMON_NAME="dnsperf_daemon"
-DAEMON_USER="root"
-DAEMON_PATH="/usr/local/bin"
+export DAEMON_USER="root"  # Used by OpenRC init script
+export DAEMON_PATH="/usr/local/bin"  # Used by OpenRC init script
 DAEMON_PIDFILE="/var/run/${DAEMON_NAME}.pid"
 DAEMON_LOGFILE="/var/log/${DAEMON_NAME}.log"
 DAEMON_WORKDIR="/var/lib/${DAEMON_NAME}"
@@ -53,7 +53,7 @@ log_message() {
 # Create working directory
 setup_daemon() {
     mkdir -p "$DAEMON_WORKDIR"
-    cd "$DAEMON_WORKDIR"
+    cd "$DAEMON_WORKDIR" || exit 1
     touch "$DAEMON_LOGFILE"
     log_message "Daemon setup completed"
 }
@@ -147,7 +147,6 @@ run_dns_test() {
     result=$(dnsperf -W -q "$QUERIES_PER_SECOND" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" 2>/dev/null | grep "Average Latency" | cut -d" " -f7)
 
     if [ -n "$result" ]; then
-        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
         # Store only the latest result (value only, no timestamp)
         echo "$result" > "$LATEST_RESULT_FILE"
         log_message "DNS test completed - Average Latency: ${result}ms"
@@ -170,17 +169,22 @@ daemon_main() {
 
     while true; do
         # Record start time
-        local start_time=$(date +%s)
+        local start_time
+        local end_time
+        local elapsed_time
+        local remaining_sleep
+
+        start_time=$(date +%s)
 
         update_hosts >/dev/null 2>&1
         run_dns_test
 
         # Calculate elapsed time
-        local end_time=$(date +%s)
-        local elapsed_time=$((end_time - start_time))
+        end_time=$(date +%s)
+        elapsed_time=$((end_time - start_time))
 
         # Calculate remaining sleep time
-        local remaining_sleep=$((SLEEP_INTERVAL - elapsed_time))
+        remaining_sleep=$((SLEEP_INTERVAL - elapsed_time))
 
         if [ $remaining_sleep -gt 0 ]; then
             log_message "Test took ${elapsed_time}s, sleeping for ${remaining_sleep}s"
