@@ -198,6 +198,105 @@ make test-results
 # Neuestes Testergebnis anzeigen
 ls -la test_results/ | tail -1
 ```
+
+## REST API
+
+Das System enthält eine minimale REST API um DNS-Performance-Ergebnisse über HTTP abzurufen.
+
+### API starten
+
+```bash
+# API-Server starten
+sudo rc-service dnsperf_api start
+
+# Oder über Makefile
+sudo make start-api
+```
+
+### Verfügbare Endpoints
+
+#### Gesundheitsprüfung
+```bash
+curl http://localhost:8080/health
+```
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-09-21T14:30:45+02:00",
+  "service": "dnsperf-api"
+}
+```
+
+#### DNS-Performance-Ergebnis (JSON)
+```bash
+curl http://localhost:8080/result
+```
+```json
+{
+  "latency": 12.34,
+  "unit": "ms", 
+  "timestamp": "2025-09-21T14:30:45+02:00",
+  "status": "ok"
+}
+```
+
+#### DNS-Performance-Ergebnis (Raw)
+```bash
+curl http://localhost:8080/result/raw
+```
+```
+12.34
+```
+
+### API-Konfiguration
+
+Die API kann über Umgebungsvariablen konfiguriert werden:
+
+```bash
+# Port ändern (Standard: 8080)
+export API_PORT=8080
+
+# Bind-Adresse ändern (Standard: 0.0.0.0)  
+export API_HOST=127.0.0.1
+
+# API mit neuer Konfiguration starten
+rc-service dnsperf_api restart
+```
+
+### API-Management
+
+```bash
+# Status prüfen
+rc-service dnsperf_api status
+make status-api
+
+# API stoppen
+rc-service dnsperf_api stop
+make stop-api
+
+# API neu starten
+rc-service dnsperf_api restart
+make restart-api
+
+# API testen
+make test-api
+```
+
+### API zu Runlevel hinzufügen
+
+```bash
+# API automatisch beim Boot starten
+rc-update add dnsperf_api default
+```
+
+### API-Logs
+
+API-Logs werden in `/var/log/dnsperf_api.log` gespeichert:
+
+```bash
+# Logs überwachen
+tail -f /var/log/dnsperf_api.log
+```
 ## Überwachung
 
 ### Log-Datei überwachen:

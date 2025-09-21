@@ -1,0 +1,69 @@
+#!/sbin/openrc-run
+# Copyright 1999-2025 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+name="DNS Performance API"
+description="REST API server for DNS performance results"
+
+# Declare additional commands
+extra_started_commands="reload"
+
+# Stop timeout - wait up to 10 seconds for API server to stop gracefully
+stop_timeout=10
+
+command="/usr/local/bin/dns_perf_api.sh"
+command_args="start"
+command_user="root"
+pidfile="/var/run/dnsperf_api.pid"
+command_background="yes"
+
+# API Configuration
+API_PORT=${API_PORT:-8080}
+API_HOST=${API_HOST:-0.0.0.0}
+
+depend() {
+    need net
+    after logger dnsperf_daemon
+}
+
+start_pre() {
+    # Check if API script exists and is executable
+    if [ ! -x "${command}" ]; then
+        eerror "API script not found or not executable: ${command}"
+        return 1
+    fi
+
+    # Check if netcat is available
+    if ! command -v nc >/dev/null 2>&1; then
+        eerror "netcat (nc) is required but not installed"
+        eerror "Please install netcat: emerge -av net-analyzer/netcat or apk add netcat-openbsd"
+        return 1
+    fi
+
+    # Check if port is already in use
+    if nc -z "$API_HOST" "$API_PORT" 2>/dev/null; then
+        eerror "Port $API_PORT is already in use"
+        return 1
+    fi
+
+    einfo "Starting ${name} on ${API_HOST}:${API_PORT}..."
+    return 0
+}
+
+start_post() {
+    einfo "${name} started successfully"
+    einfo "API endpoints:"
+    einfo "  Health check: http://localhost:${API_PORT}/health"
+    einfo "  Latest result: http://localhost:${API_PORT}/result"
+    einfo "  Raw result: http://localhost:${API_PORT}/result/raw"
+}
+
+stop_post() {
+    einfo "${name} stopped"
+}
+
+reload() {
+    einfo "API server does not support configuration reload"
+    einfo "Please restart the service instead: rc-service dnsperf_api restart"
+    return 1
+}

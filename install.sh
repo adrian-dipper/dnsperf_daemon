@@ -6,6 +6,7 @@
 set -e
 
 DAEMON_NAME="dnsperf_daemon"
+API_NAME="dnsperf_api"
 DAEMON_USER="root"
 DAEMON_PATH="/usr/local/bin"
 DAEMON_WORKDIR="/var/lib/${DAEMON_NAME}"
@@ -15,7 +16,7 @@ SYSTEMD_DIR="/etc/systemd/system"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${SCRIPT_DIR}"
 
-echo "Installing DNS Performance Daemon for OpenRC..."
+echo "Installing DNS Performance Daemon and API for OpenRC..."
 
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
@@ -35,7 +36,7 @@ if [ -f "$DAEMON_PATH/dns_perf_backend.sh" ] || [ -f "$INIT_DIR/dnsperf_daemon" 
     EXISTING_INSTALLATION=true
     echo "Existing installation detected. Performing update..."
 
-    # Stop the daemon if it's running
+    # Stop services if they're running
     if rc-service dnsperf_daemon status >/dev/null 2>&1; then
         echo "Stopping running daemon..."
         rc-service dnsperf_daemon stop
@@ -43,8 +44,18 @@ if [ -f "$DAEMON_PATH/dns_perf_backend.sh" ] || [ -f "$INIT_DIR/dnsperf_daemon" 
     else
         DAEMON_WAS_RUNNING=false
     fi
+
+    if rc-service dnsperf_api status >/dev/null 2>&1; then
+        echo "Stopping running API..."
+        rc-service dnsperf_api stop
+        API_WAS_RUNNING=true
+    else
+        API_WAS_RUNNING=false
+    fi
 else
     echo "Fresh installation detected..."
+    DAEMON_WAS_RUNNING=false
+    API_WAS_RUNNING=false
 fi
 
 # Check dependencies
@@ -63,10 +74,15 @@ if ! command -v unzip >/dev/null 2>&1; then
     MISSING_DEPS="$MISSING_DEPS unzip"
 fi
 
+if ! command -v nc >/dev/null 2>&1; then
+    MISSING_DEPS="$MISSING_DEPS netcat"
+fi
+
 if [ -n "$MISSING_DEPS" ]; then
     echo "Error: Missing dependencies:$MISSING_DEPS"
     echo "Please install them first. For example:"
-    echo "  emerge -av net-dns/bind-tools net-misc/wget app-arch/unzip"
+    echo "  emerge -av net-dns/bind-tools net-misc/wget app-arch/unzip net-analyzer/netcat"
+    echo "  or: apk add bind-tools wget unzip netcat-openbsd"
     echo "  Note: dnsperf might need to be compiled from source"
     exit 1
 fi
@@ -150,6 +166,12 @@ cp "$PROJECT_ROOT/bin/dns_perf_backend.sh" "$DAEMON_PATH/"
 chmod 755 "$DAEMON_PATH/dns_perf_backend.sh"
 chown root:root "$DAEMON_PATH/dns_perf_backend.sh"
 
+# Install API script to /usr/local/bin/
+echo "Installing API script to $DAEMON_PATH/..."
+cp "$PROJECT_ROOT/bin/dns_perf_api.sh" "$DAEMON_PATH/"
+chmod 755 "$DAEMON_PATH/dns_perf_api.sh"
+chown root:root "$DAEMON_PATH/dns_perf_api.sh"
+
 # Install configuration file to /etc/
 echo "Installing configuration file to $CONFIG_DIR/..."
 if [ ! -f "$CONFIG_DIR/dnsperf_daemon.conf" ] || [ "$EXISTING_INSTALLATION" = false ]; then
@@ -183,10 +205,15 @@ else
 fi
 
 # Install OpenRC init script to /etc/init.d/
-echo "Installing OpenRC init script to $INIT_DIR/..."
+echo "Installing OpenRC init scripts to $INIT_DIR/..."
 cp "$PROJECT_ROOT/init/dnsperf_daemon" "$INIT_DIR/"
 chmod 755 "$INIT_DIR/dnsperf_daemon"
 chown root:root "$INIT_DIR/dnsperf_daemon"
+
+# Install API init script
+cp "$PROJECT_ROOT/init/dnsperf_api" "$INIT_DIR/"
+chmod 755 "$INIT_DIR/dnsperf_api"
+chown root:root "$INIT_DIR/dnsperf_api"
 
 # Install systemd service file (optional, for reference)
 if [ -d "$SYSTEMD_DIR" ]; then
@@ -216,6 +243,12 @@ if [ "$EXISTING_INSTALLATION" = true ] && [ "$DAEMON_WAS_RUNNING" = true ]; then
     rc-service dnsperf_daemon start
 fi
 
+# Restart API if it was running before
+if [ "$EXISTING_INSTALLATION" = true ] && [ "$API_WAS_RUNNING" = true ]; then
+    echo "Restarting API..."
+    rc-service dnsperf_api start
+fi
+
 echo ""
 if [ "$EXISTING_INSTALLATION" = true ]; then
     echo "Update completed successfully!"
@@ -227,31 +260,64 @@ else
 fi
 
 echo ""
+echo "=== DNS Performance Daemon ==="
 echo "Files installed in standard system locations:"
 echo "  Daemon executable: $DAEMON_PATH/dns_perf_backend.sh"
+echo "  API executable: $DAEMON_PATH/dns_perf_api.sh"
 echo "  Configuration: $CONFIG_DIR/dnsperf_daemon.conf"
-echo "  OpenRC init script: $INIT_DIR/dnsperf_daemon"
+echo "  Daemon init script: $INIT_DIR/dnsperf_daemon"
+echo "  API init script: $INIT_DIR/dnsperf_api"
 if [ -f "$SYSTEMD_DIR/dnsperf_daemon.service" ]; then
     echo "  Systemd service: $SYSTEMD_DIR/dnsperf_daemon.service (reference)"
 fi
 echo "  Runtime data: $DAEMON_WORKDIR/"
-echo "  Log file: /var/log/dnsperf_daemon.log"
+echo "  Daemon log: /var/log/dnsperf_daemon.log"
+echo "  API log: /var/log/dnsperf_api.log"
+
 echo ""
+echo "=== Configuration ==="
 echo "To customize the configuration, edit: /etc/dnsperf_daemon.conf"
 echo "Important settings:"
 echo "  - SLEEP_INTERVAL: Time between tests (default: 30 seconds)"
 echo "  - DNS_SERVER: DNS server to test (default: 1.1.1.1)"
 echo "  - QUERIES_PER_SECOND: Test intensity (default: 20)"
 echo "  - DOMAIN_COUNT: Number of domains to download (default: 1000)"
+
 echo ""
-echo "After changing configuration, reload with:"
-echo "  rc-service dnsperf_daemon reload"
+echo "API settings (environment variables):"
+echo "  - API_PORT: HTTP port (default: 8080)"
+echo "  - API_HOST: Bind address (default: 0.0.0.0)"
+
 echo ""
-echo "Start the daemon with:"
+echo "=== Usage - Daemon ==="
+echo "Start the daemon:"
 echo "  rc-service dnsperf_daemon start"
 echo ""
-echo "Check status with:"
+echo "Check daemon status:"
 echo "  rc-service dnsperf_daemon status"
 echo ""
-echo "View latest result with:"
+echo "Reload configuration:"
+echo "  rc-service dnsperf_daemon reload"
+echo ""
+echo "View latest result:"
 echo "  cat $DAEMON_WORKDIR/latest_result.txt"
+
+echo ""
+echo "=== Usage - API ==="
+echo "Start the API server:"
+echo "  rc-service dnsperf_api start"
+echo ""
+echo "Check API status:"
+echo "  rc-service dnsperf_api status"
+echo ""
+echo "Test API endpoints:"
+echo "  curl http://localhost:8080/health"
+echo "  curl http://localhost:8080/result"
+echo "  curl http://localhost:8080/result/raw"
+
+echo ""
+echo "=== Optional: Add to runlevel ==="
+echo "To start services automatically at boot:"
+echo "  rc-update add dnsperf_daemon default"
+echo "  rc-update add dnsperf_api default"
+
