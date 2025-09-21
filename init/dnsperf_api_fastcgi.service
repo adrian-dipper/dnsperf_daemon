@@ -1,0 +1,29 @@
+[Unit]
+Description=DNS Performance FastCGI API Server
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/lib/dnsperf_daemon
+Environment=DAEMON_WORKDIR=/var/lib/dnsperf_daemon
+ExecStart=/usr/bin/python3 /usr/local/bin/dns_perf_api.py
+ExecStartPost=/bin/chmod 666 /var/run/dnsperf_api.sock
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=mixed
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/dnsperf_daemon /var/log /var/run
+
+[Install]
+WantedBy=multi-user.target

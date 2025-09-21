@@ -1,0 +1,38 @@
+#!/sbin/openrc-run
+
+name="DNS Performance FastCGI API"
+description="FastCGI server for DNS performance results API"
+
+pidfile="/var/run/dnsperf_api_fastcgi.pid"
+command="/usr/bin/python3"
+command_args="/usr/local/bin/dns_perf_api.py"
+command_user="www-data:www-data"
+command_background="yes"
+
+start_stop_daemon_args="--make-pidfile"
+
+depend() {
+    need net
+    after nginx
+}
+
+start_pre() {
+    checkpath --directory --owner www-data:www-data --mode 0755 /var/lib/dnsperf_daemon
+    checkpath --file --owner www-data:www-data --mode 0644 /var/log/dnsperf_api.log
+
+    # Remove old socket if exists
+    rm -f /var/run/dnsperf_api.sock
+}
+
+start_post() {
+    # Wait a moment for socket creation and set permissions
+    sleep 1
+    if [ -S /var/run/dnsperf_api.sock ]; then
+        chown www-data:www-data /var/run/dnsperf_api.sock
+        chmod 666 /var/run/dnsperf_api.sock
+    fi
+}
+
+stop_post() {
+    rm -f /var/run/dnsperf_api.sock
+}
