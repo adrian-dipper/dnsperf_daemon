@@ -21,7 +21,12 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 ### Added
 - (88e0a6b) feat: add changelog validation and contribution guidelines (CI workflow, contribution sections, enforcement script)
 
+### Fixed
+- (5f7a022) fix: improve commit message validation logic in changelog_and_commits.yml
+- (25bfdc4) fix: enhance commit message validation regex in changelog_and_commits.yml
+
 ### Docs
+- (8a0e84a) docs: update CHANGELOG.md for version 0.3.3 with CI and documentation enhancements
 - (d9288d8) docs: add detailed changelog update policy and validation reminders to Copilot instructions
 - (15a343f) docs: add Copilot instructions for conventional commit messages
 - (bc02553) docs: update CHANGELOG.md
