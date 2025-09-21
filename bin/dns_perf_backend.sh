@@ -37,11 +37,11 @@ declare CSVFILE="$DAEMON_WORKDIR/top-1m.csv"
 declare TEMP_FILE="$DAEMON_WORKDIR/top_domains.txt"
 declare DNSPERF_FILE="$DAEMON_WORKDIR/dns_perf.txt"
 declare DNSPERF_FILE_SORTED="$DAEMON_WORKDIR/dns_perf_sorted.txt"
-declare TODAY_DNSPERF_LOG="$DAEMON_WORKDIR/today_dnsperf_log.txt"
 declare LATEST_RESULT_FILE="$DAEMON_WORKDIR/latest_result.txt"
 
 # Current date
 declare current_day=""
+declare last_update_day=""
 declare -a HOSTS
 
 DAILY_HOSTS=()
@@ -117,21 +117,15 @@ trap reload_config SIGHUP
 
 # === Update HOSTS daily with Top 100 domains ===
 update_hosts() {
-    local today=""
     local current_day
     current_day=$(date +%F)
 
-    # Read today's date from log file if it exists
-    if [ -f "$TODAY_DNSPERF_LOG" ]; then
-        today=$(cat "$TODAY_DNSPERF_LOG" 2>/dev/null || echo "")
-    fi
-
     DAILY_HOSTS=()
 
-    # If file does not exist or is from previous day, fetch new list
-    if [ "$current_day" != "$today" ]; then
+    # Check if we need to update (different day or first run)
+    if [ "$current_day" != "$last_update_day" ]; then
         log "Updating domain list for $current_day"
-        echo "$current_day" >"$TODAY_DNSPERF_LOG"
+        last_update_day="$current_day"
 
         # 1. Download der ZIP
         log "Executing wget to download domain list..."
