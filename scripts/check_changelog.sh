@@ -4,6 +4,9 @@ set -euo pipefail
 BASE_REF="$1"
 HEAD_REF="$2"
 
+# Track whether CHANGELOG.md was modified (must be initialized for set -u safety)
+HAVE_CHANGELOG_CHANGE=false
+
 # Collect changed files between base and head
 CHANGED_FILES=$(git diff --name-only "${BASE_REF}"..."${HEAD_REF}")
 
@@ -38,4 +41,3 @@ echo "[ERROR] Non-documentation changes detected but CHANGELOG.md was not update
 echo "Changed files:" >&2
 echo "$CHANGED_FILES" >&2
 exit 1
-
