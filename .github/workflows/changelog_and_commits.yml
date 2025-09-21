@@ -29,18 +29,18 @@ jobs:
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           echo "Checking commit messages between $BASE_SHA..$HEAD_SHA"
           INVALID=0
+          # Pattern: require a single space after colon and at least one non-space char in description
+          CC_REGEX='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|security)(\([a-z0-9_.-]+\))?(!)?: [^ ].+$'
           git log --format='%H%x09%s' "$BASE_SHA".."$HEAD_SHA" | while IFS=$'\t' read -r commit_hash subject; do
-            # Skip merge commits automatically
             if echo "$subject" | grep -qi '^Merge '; then
               continue
             fi
-            # Allow explicit skip via flag in full commit body
             if git log -1 --format=%B --grep='\[skip-conventional-check\]' "$commit_hash" >/dev/null 2>&1; then
               echo "[SKIP] commit has [skip-conventional-check] flag: $commit_hash"
               continue
             fi
             msg="$subject"
-            if ! echo "$msg" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|security)(\([a-z0-9_.-]+\))?(!)?: .{1,}'; then
+            if ! echo "$msg" | grep -Eq "$CC_REGEX"; then
               echo "[ERROR] Non-conforming commit message: $msg" >&2
               INVALID=1
             else
