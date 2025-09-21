@@ -43,6 +43,7 @@ declare LATEST_RESULT_FILE="$DAEMON_WORKDIR/latest_result.txt"
 declare current_day=""
 declare last_update_day=""
 declare -a HOSTS
+declare -a RUNNING_PIDS=()  # Array to track running dnsperf PIDs
 
 DAILY_HOSTS=()
 
@@ -99,10 +100,78 @@ setup_daemon() {
     log "Daemon setup completed"
 }
 
+# Kill any running dnsperf processes with timeout
+kill_dnsperf_processes() {
+    local timeout=${1:-10}  # Default 10 seconds timeout
+    local pids
+
+    # Find all dnsperf processes
+    pids=$(pgrep -f "dnsperf.*${DNS_SERVER}" 2>/dev/null || true)
+
+    if [ -n "$pids" ]; then
+        log "Found running dnsperf processes: $pids"
+
+        # First try graceful termination with SIGTERM
+        for pid in $pids; do
+            if kill -TERM "$pid" 2>/dev/null; then
+                log "Sent SIGTERM to dnsperf process $pid"
+            fi
+        done
+
+        # Wait for graceful shutdown
+        local elapsed=0
+        while [ $elapsed -lt $timeout ]; do
+            # Check if any processes are still running
+            local still_running=""
+            for pid in $pids; do
+                if kill -0 "$pid" 2>/dev/null; then
+                    still_running="$still_running $pid"
+                fi
+            done
+
+            if [ -z "$still_running" ]; then
+                log "All dnsperf processes terminated gracefully"
+                return 0
+            fi
+
+            sleep 1
+            elapsed=$((elapsed + 1))
+        done
+
+        # Force kill remaining processes
+        for pid in $pids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                log "Force killing dnsperf process $pid (timeout after ${timeout}s)"
+                kill -KILL "$pid" 2>/dev/null || true
+            fi
+        done
+
+        # Final check
+        sleep 1
+        local final_check=""
+        for pid in $pids; do
+            if kill -0 "$pid" 2>/dev/null; then
+                final_check="$final_check $pid"
+            fi
+        done
+
+        if [ -n "$final_check" ]; then
+            log "Warning: Could not kill dnsperf processes: $final_check"
+        else
+            log "All dnsperf processes successfully terminated"
+        fi
+    fi
+}
+
 # Signal handlers
 cleanup() {
     log "Daemon received shutdown signal"
+
+    # Kill any running dnsperf processes with 10 second timeout
+    kill_dnsperf_processes 10
+
     rm -f "$DAEMON_PIDFILE"
+    log "Daemon stopped gracefully"
     exit 0
 }
 
@@ -134,6 +203,18 @@ reload_config() {
 
 trap cleanup SIGTERM SIGINT
 trap reload_config SIGHUP
+
+# Interruptible sleep function that can be interrupted by signals
+interruptible_sleep() {
+    local sleep_time=$1
+    local elapsed=0
+
+    while [ $elapsed -lt $sleep_time ]; do
+        sleep 1 2>/dev/null || return 1  # Sleep for 1 second at a time
+        elapsed=$((elapsed + 1))
+    done
+    return 0
+}
 
 # === Update HOSTS daily with Top 100 domains ===
 update_hosts() {
@@ -243,7 +324,11 @@ daemon_main() {
 
         if [ $remaining_sleep -gt 0 ]; then
             log "Test took ${elapsed_time}s, sleeping for ${remaining_sleep}s"
-            sleep "$remaining_sleep"
+            if ! interruptible_sleep "$remaining_sleep"; then
+                # Sleep was interrupted, likely by a signal - exit gracefully
+                log "Sleep interrupted by signal, exiting"
+                break
+            fi
         else
             log "Test took ${elapsed_time}s (longer than interval of ${SLEEP_INTERVAL}s), running immediately"
         fi
