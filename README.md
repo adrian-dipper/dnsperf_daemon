@@ -273,7 +273,7 @@ Das neueste Ergebnis wird nur als numerischer Wert gespeichert:
 12.34
 ```
 
-Wobei `12.34` die durchschnittliche Latenz in Millisekunden ist. Das Datum und die Uhrzeit sind im Log verfügbar.
+Wobei `12.34` die durchschnittliche Latenz in Sekunden ist. Das Datum und die Uhrzeit sind im Log verfügbar.
 
 ## Lizenz
 
