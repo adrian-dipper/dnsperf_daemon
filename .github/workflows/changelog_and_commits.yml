@@ -29,24 +29,24 @@ jobs:
           HEAD_SHA="${{ github.event.pull_request.head.sha }}"
           echo "Checking commit messages between $BASE_SHA..$HEAD_SHA"
           INVALID=0
-          while IFS= read -r line; do
+          git log --format='%H%x09%s' "$BASE_SHA".."$HEAD_SHA" | while IFS=$'\t' read -r commit_hash subject; do
             # Skip merge commits automatically
-            if echo "$line" | grep -qi '^Merge '; then
+            if echo "$subject" | grep -qi '^Merge '; then
               continue
             fi
-            # Allow explicit skip
-            if git log -1 --format=%B --grep='\[skip-conventional-check\]' $(echo "$line" | cut -d' ' -f1) >/dev/null 2>&1; then
-              echo "[SKIP] commit has [skip-conventional-check] flag: $line"
+            # Allow explicit skip via flag in full commit body
+            if git log -1 --format=%B --grep='\[skip-conventional-check\]' "$commit_hash" >/dev/null 2>&1; then
+              echo "[SKIP] commit has [skip-conventional-check] flag: $commit_hash"
               continue
             fi
-            msg=$(echo "$line" | cut -d' ' -f2-)
+            msg="$subject"
             if ! echo "$msg" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|security)(\([a-z0-9_.-]+\))?(!)?: .{1,}'; then
-              echo "[ERROR] Non-conforming commit message: $msg"
+              echo "[ERROR] Non-conforming commit message: $msg" >&2
               INVALID=1
             else
               echo "[OK] $msg"
             fi
-          done < <(git log --format='%H %s' "$BASE_SHA".."$HEAD_SHA")
+          done
           if [ $INVALID -ne 0 ]; then
             echo "One or more commit messages do not follow Conventional Commits." >&2
             exit 1
