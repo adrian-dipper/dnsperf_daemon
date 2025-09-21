@@ -3,7 +3,7 @@
 # Distributed under the terms of the GNU General Public License v2
 
 name="DNS Performance Daemon"
-description="Monitors DNS performance by testing response times periodically"
+description="Monitors DNS performance by testing resoltution times periodically"
 
 # Declare additional commands
 extra_started_commands="reload"
