@@ -211,6 +211,7 @@ Beiträge willkommen. Bitte folgende Konventionen beachten:
   - `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `ci: ...`, `chore: ...`, `perf: ...`, `style: ...`, `build: ...`, `revert: ...`, `security: ...`
   - Optionaler Scope: `feat(logging): ...`
   - Breaking Change: `feat(api)!: ...` + Footer `BREAKING CHANGE: ...`
+  - Quelle / Referenz für erlaubte Typen & Regex: `scripts/conventional_commits.sh` (mit `--regex` ausgeben)
 - Changelog-Pflicht: Jede nicht rein dokumentarische Änderung muss `CHANGELOG.md` aktualisieren.
 - Ausnahmen:
   - Nur Doku oder CI: kein Changelog nötig
@@ -234,7 +235,6 @@ Skip-Beispiele (nicht empfohlen):
 chore: update formatting
 
 [skip-changelog]
-```
 ```
 chore: vendor upstream merge
 

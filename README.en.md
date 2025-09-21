@@ -215,6 +215,7 @@ Contributions are welcome. Please follow these conventions:
   - `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `ci: ...`, `chore: ...`, `perf: ...`, `style: ...`, `build: ...`, `revert: ...`, `security: ...`
   - Optional scope: `feat(logging): ...`
   - Breaking change: `feat(api)!: ...` + footer `BREAKING CHANGE: <explanation>`
+  - Source of truth for allowed types & regex: `scripts/conventional_commits.sh` (run with `--regex` to print pattern)
 - Changelog requirement: Any non‑documentation change must update `CHANGELOG.md`.
 - Bilingual rule: If you change *one* README, update the other (English + German) in the same PR.
 - Exceptions:
