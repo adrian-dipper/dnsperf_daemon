@@ -24,6 +24,7 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 ### Fixed
 - (5f7a022) fix: improve commit message validation logic in changelog_and_commits.yml
 - (25bfdc4) fix: enhance commit message validation regex in changelog_and_commits.yml
+- (f034142) ci: fix subshell issue in conventional commits validation loop (preserve INVALID state)
 
 ### Docs
 - (8a0e84a) docs: update CHANGELOG.md for version 0.3.3 with CI and documentation enhancements
@@ -31,6 +32,8 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - (15a343f) docs: add Copilot instructions for conventional commit messages
 - (bc02553) docs: update CHANGELOG.md
 - (a37e9a6) docs: update README to clarify MIT license details and add motivational note
+- (6b86997) docs: update CHANGELOG version 0.3.3 section with recent validation fix commits
+- (0c0cacb) docs(readme): document [skip-conventional-check] directive in contribution guidelines
 
 _Notes:_ Non-functional release focusing on policy, documentation, and CI/CD guardrails. Runtime behavior unchanged.
 
