@@ -109,7 +109,27 @@ cleanup() {
 reload_config() {
     log "Received reload signal - reloading configuration"
     load_config
+
+    # Reset and update all configuration-dependent variables
+    DAILY_HOSTS=()
+
+    # Update file paths that depend on DAEMON_WORKDIR (in case it changed)
+    ZIPFILE="$DAEMON_WORKDIR/top-1m.csv.zip"
+    CSVFILE="$DAEMON_WORKDIR/top-1m.csv"
+    TEMP_FILE="$DAEMON_WORKDIR/top_domains.txt"
+    DNSPERF_FILE="$DAEMON_WORKDIR/dns_perf.txt"
+    DNSPERF_FILE_SORTED="$DAEMON_WORKDIR/dns_perf_sorted.txt"
+    LATEST_RESULT_FILE="$DAEMON_WORKDIR/latest_result.txt"
+
+    # Force host list update to reflect new STATIC_HOSTS configuration
+    last_update_day=""  # Reset to force update on next cycle
+
+    # Immediately update hosts to get accurate count for logging
+    update_hosts >/dev/null 2>&1
+
     log "Configuration reloaded successfully"
+    log "Updated configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, QUERIES_PER_SECOND=${QUERIES_PER_SECOND}"
+    log "Host list updated with ${#HOSTS[@]} domains (${#STATIC_HOSTS[@]} static + ${#DAILY_HOSTS[@]} dynamic)"
 }
 
 trap cleanup SIGTERM SIGINT
