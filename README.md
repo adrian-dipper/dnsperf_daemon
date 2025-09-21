@@ -107,7 +107,7 @@ Die Konfiguration erfolgt über die Datei `/etc/dnsperf_daemon.conf`:
 ```bash
 # DNS Performance configuration
 SLEEP_INTERVAL=30  # Sekunden zwischen Tests (Standard: 30 Sekunden)
-DNS_SERVER="1.1.1.1"  # Zu testender DNS-Server
+DNS_SERVER="1.1.1.1"  # CloudflareDNS
 QUERIES_PER_SECOND=20  # Anfragen pro Sekunde beim Test
 
 # Domain list configuration

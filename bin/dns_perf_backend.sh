@@ -21,7 +21,6 @@ load_config() {
         SLEEP_INTERVAL=30
         DNS_SERVER="1.1.1.1" # Default DNS server to test against
         QUERIES_PER_SECOND=20 # Number of queries per second dnsperf will wait for resolution of
-
         URL="http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip"
         DOMAIN_COUNT=1000
         STATIC_HOSTS=(
