@@ -237,4 +237,4 @@ Wobei `12.34` die durchschnittliche Latenz in Millisekunden ist. Das Datum und d
 
 ## Lizenz
 
-Dieses Projekt steht unter einer freien Lizenz zur Verfügung.
+Dieses Projekt steht unter der MIT-Lizenz. Siehe die [LICENSE](LICENSE) Datei für Details.
