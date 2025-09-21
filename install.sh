@@ -158,8 +158,28 @@ if [ ! -f "$CONFIG_DIR/dnsperf_daemon.conf" ] || [ "$EXISTING_INSTALLATION" = fa
     chown root:root "$CONFIG_DIR/dnsperf_daemon.conf"
     echo "  Configuration installed: $CONFIG_DIR/dnsperf_daemon.conf"
 else
-    echo "  Configuration file exists, skipping to preserve settings"
-    echo "  New template available at: $PROJECT_ROOT/config/dnsperf_daemon.conf"
+    # Configuration file exists - ask user what to do
+    echo "  Configuration file already exists: $CONFIG_DIR/dnsperf_daemon.conf"
+    echo "  Do you want to reset it to default settings? (y/N)"
+    read -r response
+
+    case "$response" in
+        [Yy]|[Yy][Ee][Ss])
+            echo "  Creating backup of existing configuration..."
+            cp "$CONFIG_DIR/dnsperf_daemon.conf" "$CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+            echo "  Backup created: $CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+
+            echo "  Installing new default configuration..."
+            cp "$PROJECT_ROOT/config/dnsperf_daemon.conf" "$CONFIG_DIR/"
+            chmod 644 "$CONFIG_DIR/dnsperf_daemon.conf"
+            chown root:root "$CONFIG_DIR/dnsperf_daemon.conf"
+            echo "  Configuration reset to defaults: $CONFIG_DIR/dnsperf_daemon.conf"
+            ;;
+        *)
+            echo "  Keeping existing configuration unchanged"
+            echo "  New template available at: $PROJECT_ROOT/config/dnsperf_daemon.conf"
+            ;;
+    esac
 fi
 
 # Install OpenRC init script to /etc/init.d/
