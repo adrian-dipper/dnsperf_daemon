@@ -2,6 +2,7 @@
 
 # Daemon configuration
 DAEMON_NAME="dnsperf_daemon"
+STATIC_LOG_HEADER="${DAEMON_NAME}:"
 export DAEMON_USER="root"  # Used by OpenRC init script
 export DAEMON_PATH="/usr/local/bin"  # Used by OpenRC init script
 DAEMON_PIDFILE="/var/run/${DAEMON_NAME}.pid"
@@ -14,9 +15,9 @@ load_config() {
     if [ -f "$CONFIG_FILE" ]; then
         # shellcheck source=../config/dnsperf_daemon.conf
         source "$CONFIG_FILE"
-        log_message "Configuration loaded from $CONFIG_FILE"
+        log "Configuration loaded from $CONFIG_FILE"
     else
-        log_message "Warning: Configuration file $CONFIG_FILE not found, using defaults"
+        log "Warning: Configuration file $CONFIG_FILE not found, using defaults"
         # Default values
         SLEEP_INTERVAL=30
         DNS_SERVER="1.1.1.1" # Default DNS server to test against
@@ -45,9 +46,49 @@ declare -a HOSTS
 
 DAILY_HOSTS=()
 
-# Logging function
-log_message() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$DAEMON_LOGFILE"
+# === Logging-Funktion ===
+log() {
+    local line first=true indent=""
+
+    # Determine input source: parameter or stdin
+    if [[ -n "$1" ]]; then
+        # If there are arguments, combine them into one string and feed to read loop
+        while IFS= read -r line; do
+            local LOG_HEADER
+            LOG_HEADER="$(date "+%b %d %H:%M:%S") $STATIC_LOG_HEADER"
+
+            if $first; then
+                # Capture leading whitespace of the first line
+                if [[ "$line" =~ ^([[:space:]]*) ]]; then
+                    indent="${BASH_REMATCH[1]}"
+                fi
+                echo "$LOG_HEADER $line" >&1
+                echo "$LOG_HEADER $line" >> /var/log/syslog
+                first=false
+            else
+                echo "$LOG_HEADER ${indent}    $line" >&1
+                echo "$LOG_HEADER ${indent}    $line" >> /var/log/syslog
+            fi
+        done <<< "$*"
+    else
+        # Read directly from stdin
+        while IFS= read -r line; do
+            local LOG_HEADER
+            LOG_HEADER="$(date "+%b %d %H:%M:%S") $STATIC_LOG_HEADER"
+
+            if $first; then
+                if [[ "$line" =~ ^([[:space:]]*) ]]; then
+                    indent="${BASH_REMATCH[1]}"
+                fi
+                echo "$LOG_HEADER $line" >&1
+                echo "$LOG_HEADER $line" >> /var/log/syslog
+                first=false
+            else
+                echo "$LOG_HEADER ${indent}    $line" >&1
+                echo "$LOG_HEADER ${indent}    $line" >> /var/log/syslog
+            fi
+        done
+    fi
 }
 
 # Create working directory
@@ -55,20 +96,20 @@ setup_daemon() {
     mkdir -p "$DAEMON_WORKDIR"
     cd "$DAEMON_WORKDIR" || exit 1
     touch "$DAEMON_LOGFILE"
-    log_message "Daemon setup completed"
+    log "Daemon setup completed"
 }
 
 # Signal handlers
 cleanup() {
-    log_message "Daemon received shutdown signal"
+    log "Daemon received shutdown signal"
     rm -f "$DAEMON_PIDFILE"
     exit 0
 }
 
 reload_config() {
-    log_message "Received reload signal - reloading configuration"
+    log "Received reload signal - reloading configuration"
     load_config
-    log_message "Configuration reloaded successfully"
+    log "Configuration reloaded successfully"
 }
 
 trap cleanup SIGTERM SIGINT
@@ -89,28 +130,28 @@ update_hosts() {
 
     # If file does not exist or is from previous day, fetch new list
     if [ "$current_day" != "$today" ]; then
-        log_message "Updating domain list for $current_day"
+        log "Updating domain list for $current_day"
         echo "$current_day" >"$TODAY_DNSPERF_LOG"
 
         # 1. Download der ZIP
-        log_message "Executing wget to download domain list..."
+        log "Executing wget to download domain list..."
         if wget -N "$URL" -O "$ZIPFILE" >> "$DAEMON_LOGFILE" 2>&1; then
-            log_message "Successfully downloaded domain list"
+            log "Successfully downloaded domain list"
         else
-            log_message "Failed to download domain list, using existing file"
+            log "Failed to download domain list, using existing file"
             if [ ! -f "$TEMP_FILE" ]; then
-                log_message "No existing domain file found, using static hosts only"
+                log "No existing domain file found, using static hosts only"
                 return
             fi
         fi
 
         # 2. CSV aus ZIP extrahieren und Top 100 Domains filtern
-        log_message "Executing unzip to extract domain list..."
+        log "Executing unzip to extract domain list..."
         if unzip -o "$ZIPFILE" -d "$DAEMON_WORKDIR" >> "$DAEMON_LOGFILE" 2>&1; then
             head -n "$DOMAIN_COUNT" "$CSVFILE" | cut -d, -f2 | sed 's/\r$//g' >"$TEMP_FILE"
-            log_message "Successfully extracted and filtered domains"
+            log "Successfully extracted and filtered domains"
         else
-            log_message "Failed to extract domain list"
+            log "Failed to extract domain list"
         fi
     fi
 
@@ -125,12 +166,12 @@ update_hosts() {
 
     # Combine static hosts and downloaded hosts
     HOSTS=("${STATIC_HOSTS[@]}" "${DAILY_HOSTS[@]}")
-    log_message "Updated host list with ${#HOSTS[@]} domains"
+    log "Updated host list with ${#HOSTS[@]} domains"
 }
 
 # DNS Performance test function
 run_dns_test() {
-    log_message "Starting DNS performance test with ${#HOSTS[@]} domains"
+    log "Starting DNS performance test with ${#HOSTS[@]} domains"
 
     # Generate DNS test file
     echo "" >"$DNSPERF_FILE"
@@ -149,9 +190,9 @@ run_dns_test() {
     if [ -n "$result" ]; then
         # Store only the latest result (value only, no timestamp)
         echo "$result" > "$LATEST_RESULT_FILE"
-        log_message "DNS test completed - Average Latency: ${result}ms"
+        log "DNS test completed - Average Latency: ${result}ms"
     else
-        log_message "DNS test failed or returned no results"
+        log "DNS test failed or returned no results"
     fi
 }
 
@@ -161,8 +202,8 @@ daemon_main() {
     load_config
 
     setup_daemon
-    log_message "DNS Performance Daemon started (PID: $$)"
-    log_message "Using configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, QUERIES_PER_SECOND=${QUERIES_PER_SECOND}"
+    log "DNS Performance Daemon started (PID: $$)"
+    log "Using configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, QUERIES_PER_SECOND=${QUERIES_PER_SECOND}"
 
     # Create PID file
     echo $$ > "$DAEMON_PIDFILE"
@@ -187,10 +228,10 @@ daemon_main() {
         remaining_sleep=$((SLEEP_INTERVAL - elapsed_time))
 
         if [ $remaining_sleep -gt 0 ]; then
-            log_message "Test took ${elapsed_time}s, sleeping for ${remaining_sleep}s"
+            log "Test took ${elapsed_time}s, sleeping for ${remaining_sleep}s"
             sleep "$remaining_sleep"
         else
-            log_message "Test took ${elapsed_time}s (longer than interval of ${SLEEP_INTERVAL}s), running immediately"
+            log "Test took ${elapsed_time}s (longer than interval of ${SLEEP_INTERVAL}s), running immediately"
         fi
     done
 }
