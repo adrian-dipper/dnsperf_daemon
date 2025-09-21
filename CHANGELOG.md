@@ -17,6 +17,14 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - Optional multi-metric export (min / max / p95 latency)
 
 ---
+## [0.3.2] - 2025-09-22 (Changelog & Preamble Alignment)
+### Docs
+- (340d348) Introduce `CHANGELOG.md` and link from both READMEs
+- (3af4721) Align / unify README preambles (merge `feature/readme_preambel`)
+
+_Notes:_ Purely documentation-focused release adding formal change tracking and ensuring bilingual README parity. No runtime behavior changes.
+
+---
 ## [0.3.1] - 2025-09-21 (Documentation & Presentation Refresh)
 ### Docs
 - (dc43731) Enhance README disclaimer and feature clarity
@@ -87,7 +95,7 @@ _Notes:_ Minimal functional daemon measuring DNS latency with static + downloade
 
 ---
 ## Integrity & Reconstruction Notes
-- All commits are from 2025-09-21 (with one UTC timestamp crossing day boundary); grouped logically.
+- All commits are from 2025-09-21 to 2025-09-22; grouped logically.
 - No semantic version tags existed at reconstruction time; versions inferred.
 - Some commits touch multiple areas; they are listed under the most significant impact area.
 - Short hashes shown; use `git show <hash>` for detail.
@@ -101,9 +109,10 @@ _Notes:_ Minimal functional daemon measuring DNS latency with static + downloade
 - Security: security-relevant fix or hardening
 
 ## Next Steps (Suggestion)
-1. Tag current state: `git tag -a v0.3.1 -m "Docs refresh" <dc43731>` (adjust hash if future commits precede tagging)
-2. Automate changelog generation (e.g. conventional commits or a lightweight script parsing `git log`)
-3. Introduce CI step validating changelog presence for release branches
+1. Tag current state: `git tag -a v0.3.2 -m "Docs: add changelog & preamble alignment" 3af4721` (adjust hash if further commits occur before tagging)
+2. Optionally backfill tags for earlier inferred releases (0.3.1, 0.3.0, 0.2.0, 0.1.0)
+3. Automate future changelog updates via a lightweight script parsing `git log` since last tag
+4. Consider adopting Conventional Commits for clearer automated grouping
 
 ---
 Generated largely via iterative AI-assisted development; manual curation minimal.
