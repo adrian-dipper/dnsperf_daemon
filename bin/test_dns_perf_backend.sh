@@ -304,7 +304,12 @@ show_results() {
 
     if [ -d "$TEST_WORKDIR" ]; then
         echo -e "${BLUE}Files created during test:${NC}"
-        ls -la "$TEST_WORKDIR/" | grep -v "^total" | wc -l
+        # Count files in directory (excluding . and ..)
+        file_count=0
+        for file in "$TEST_WORKDIR"/*; do
+            [ -e "$file" ] && file_count=$((file_count + 1))
+        done
+        echo "$file_count"
     fi
 
     echo -e "${BLUE}Commit hash:${NC} $COMMIT_HASH"
@@ -337,7 +342,7 @@ main() {
 }
 
 # Prevent daemon_main from running when sourcing the backend script
-DAEMON_MAIN_DISABLED=1
+export DAEMON_MAIN_DISABLED=1
 
 # Run main function
 main "$@"
