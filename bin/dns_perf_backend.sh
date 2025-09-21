@@ -63,11 +63,11 @@ log() {
                     indent="${BASH_REMATCH[1]}"
                 fi
                 echo "$LOG_HEADER $line" >&1
-                echo "$LOG_HEADER $line" >> /var/log/syslog
+                echo "$LOG_HEADER $line" >> "$DAEMON_LOGFILE"
                 first=false
             else
                 echo "$LOG_HEADER ${indent}    $line" >&1
-                echo "$LOG_HEADER ${indent}    $line" >> /var/log/syslog
+                echo "$LOG_HEADER ${indent}    $line" >> "$DAEMON_LOGFILE"
             fi
         done <<< "$*"
     else
@@ -81,11 +81,11 @@ log() {
                     indent="${BASH_REMATCH[1]}"
                 fi
                 echo "$LOG_HEADER $line" >&1
-                echo "$LOG_HEADER $line" >> /var/log/syslog
+                echo "$LOG_HEADER $line" >> "$DAEMON_LOGFILE"
                 first=false
             else
                 echo "$LOG_HEADER ${indent}    $line" >&1
-                echo "$LOG_HEADER ${indent}    $line" >> /var/log/syslog
+                echo "$LOG_HEADER ${indent}    $line" >> "$DAEMON_LOGFILE"
             fi
         done
     fi
@@ -129,7 +129,7 @@ update_hosts() {
 
         # 1. Download der ZIP
         log "Executing wget to download domain list..."
-        if wget -N "$URL" -O "$ZIPFILE" >> "$DAEMON_LOGFILE" 2>&1; then
+        if wget -N "$URL" -O "$ZIPFILE" 2>&1 | log; then
             log "Successfully downloaded domain list"
         else
             log "Failed to download domain list, using existing file"
@@ -141,7 +141,7 @@ update_hosts() {
 
         # 2. CSV aus ZIP extrahieren und Top 100 Domains filtern
         log "Executing unzip to extract domain list..."
-        if unzip -o "$ZIPFILE" -d "$DAEMON_WORKDIR" >> "$DAEMON_LOGFILE" 2>&1; then
+        if unzip -o "$ZIPFILE" -d "$DAEMON_WORKDIR" 2>&1 | log; then
             head -n "$DOMAIN_COUNT" "$CSVFILE" | cut -d, -f2 | sed 's/\r$//g' >"$TEMP_FILE"
             log "Successfully extracted and filtered domains"
         else
