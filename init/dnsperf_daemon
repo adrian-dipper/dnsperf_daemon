@@ -8,6 +8,9 @@ description="Monitors DNS performance by testing response times periodically"
 # Declare additional commands
 extra_started_commands="reload"
 
+# Stop timeout - wait up to 30 seconds for daemon to stop gracefully
+stop_timeout=30
+
 command="/usr/local/bin/dns_perf_backend.sh"
 command_user="root"
 pidfile="/var/run/dnsperf_daemon.pid"
