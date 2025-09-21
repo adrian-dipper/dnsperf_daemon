@@ -25,6 +25,7 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - (5f7a022) fix: improve commit message validation logic in changelog_and_commits.yml
 - (25bfdc4) fix: enhance commit message validation regex in changelog_and_commits.yml
 - (f034142) ci: fix subshell issue in conventional commits validation loop (preserve INVALID state)
+- (6a27fe2) fix(script): initialize HAVE_CHANGELOG_CHANGE to avoid unbound variable under set -u
 
 ### Docs
 - (8a0e84a) docs: update CHANGELOG.md for version 0.3.3 with CI and documentation enhancements
