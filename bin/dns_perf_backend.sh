@@ -100,65 +100,125 @@ setup_daemon() {
     log "Daemon setup completed"
 }
 
-# Kill any running dnsperf processes with timeout
-kill_dnsperf_processes() {
+# Kill any running child processes with timeout
+kill_child_processes() {
     local timeout=${1:-10}  # Default 10 seconds timeout
     local pids
+    local process_name
+    local found_processes=()
 
-    # Find all dnsperf processes
-    pids=$(pgrep -f "dnsperf.*${DNS_SERVER}" 2>/dev/null || true)
+    # List of programs used by the daemon
+    local programs=("dnsperf" "wget" "unzip" "head" "cut" "sed" "sort")
 
-    if [ -n "$pids" ]; then
-        log "Found running dnsperf processes: $pids"
+    # Find all child processes for each program
+    for program in "${programs[@]}"; do
+        case $program in
+            "dnsperf")
+                # Use specific pattern for dnsperf with DNS_SERVER
+                pids=$(pgrep -f "dnsperf.*${DNS_SERVER}" 2>/dev/null || true)
+                process_name="dnsperf (targeting ${DNS_SERVER})"
+                ;;
+            "wget")
+                # Find wget processes downloading our URL
+                pids=$(pgrep -f "wget.*$(basename "$URL")" 2>/dev/null || true)
+                process_name="wget (downloading domain list)"
+                ;;
+            "unzip")
+                # Find unzip processes working with our zip file
+                pids=$(pgrep -f "unzip.*$(basename "$ZIPFILE")" 2>/dev/null || true)
+                process_name="unzip (extracting domain list)"
+                ;;
+            *)
+                # For other programs, find any process with the name
+                pids=$(pgrep "^${program}$" 2>/dev/null || true)
+                process_name="$program"
+                ;;
+        esac
 
-        # First try graceful termination with SIGTERM
-        for pid in $pids; do
-            if kill -TERM "$pid" 2>/dev/null; then
-                log "Sent SIGTERM to dnsperf process $pid"
-            fi
-        done
+        if [ -n "$pids" ]; then
+            log "Found running $process_name processes: $pids"
+            found_processes+=("$process_name:$pids")
 
-        # Wait for graceful shutdown
-        local elapsed=0
-        while [ $elapsed -lt $timeout ]; do
-            # Check if any processes are still running
-            local still_running=""
+            # First try graceful termination with SIGTERM
             for pid in $pids; do
-                if kill -0 "$pid" 2>/dev/null; then
-                    still_running="$still_running $pid"
+                if kill -TERM "$pid" 2>/dev/null; then
+                    log "Sent SIGTERM to $process_name process $pid"
                 fi
             done
+        fi
+    done
 
-            if [ -z "$still_running" ]; then
-                log "All dnsperf processes terminated gracefully"
-                return 0
-            fi
+    if [ ${#found_processes[@]} -eq 0 ]; then
+        log "No child processes found to terminate"
+        return 0
+    fi
 
-            sleep 1
-            elapsed=$((elapsed + 1))
+    # Wait for graceful shutdown
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+        local still_running=false
+
+        # Check if any processes are still running
+        for entry in "${found_processes[@]}"; do
+            local name="${entry%%:*}"
+            local pids_str="${entry#*:}"
+
+            for pid in $pids_str; do
+                if kill -0 "$pid" 2>/dev/null; then
+                    still_running=true
+                    break 2
+                fi
+            done
         done
 
-        # Force kill remaining processes
-        for pid in $pids; do
-            if kill -0 "$pid" 2>/dev/null; then
-                log "Force killing dnsperf process $pid (timeout after ${timeout}s)"
-                kill -KILL "$pid" 2>/dev/null || true
-            fi
-        done
+        if ! $still_running; then
+            log "All child processes terminated gracefully"
+            return 0
+        fi
 
-        # Final check
         sleep 1
-        local final_check=""
-        for pid in $pids; do
+        elapsed=$((elapsed + 1))
+    done
+
+    # Force kill remaining processes
+    local force_killed=false
+    for entry in "${found_processes[@]}"; do
+        local name="${entry%%:*}"
+        local pids_str="${entry#*:}"
+
+        for pid in $pids_str; do
             if kill -0 "$pid" 2>/dev/null; then
-                final_check="$final_check $pid"
+                log "Force killing $name process $pid (timeout after ${timeout}s)"
+                kill -KILL "$pid" 2>/dev/null || true
+                force_killed=true
             fi
         done
+    done
 
-        if [ -n "$final_check" ]; then
-            log "Warning: Could not kill dnsperf processes: $final_check"
+    if $force_killed; then
+        # Final check after force kill
+        sleep 1
+        local final_warnings=()
+
+        for entry in "${found_processes[@]}"; do
+            local name="${entry%%:*}"
+            local pids_str="${entry#*:}"
+
+            for pid in $pids_str; do
+                if kill -0 "$pid" 2>/dev/null; then
+                    final_warnings+=("$name:$pid")
+                fi
+            done
+        done
+
+        if [ ${#final_warnings[@]} -gt 0 ]; then
+            local warning_msg="Warning: Could not kill processes:"
+            for warning in "${final_warnings[@]}"; do
+                warning_msg="$warning_msg ${warning#*:} (${warning%%:*})"
+            done
+            log "$warning_msg"
         else
-            log "All dnsperf processes successfully terminated"
+            log "All child processes successfully terminated"
         fi
     fi
 }
@@ -167,8 +227,8 @@ kill_dnsperf_processes() {
 cleanup() {
     log "Daemon received shutdown signal"
 
-    # Kill any running dnsperf processes with 10 second timeout
-    kill_dnsperf_processes 10
+    # Kill any running child processes with 10 second timeout
+    kill_child_processes 10
 
     rm -f "$DAEMON_PIDFILE"
     log "Daemon stopped gracefully"
