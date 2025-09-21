@@ -5,6 +5,9 @@
 name="DNS Performance Daemon"
 description="Monitors DNS performance by testing response times periodically"
 
+# Declare additional commands
+extra_started_commands="reload"
+
 command="/usr/local/bin/dns_perf_backend.sh"
 command_user="root"
 pidfile="/var/run/dnsperf_daemon.pid"
