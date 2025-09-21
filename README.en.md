@@ -2,6 +2,8 @@
 
 **Languages:** English (this document) | [Deutsch](README.md)
 
+> Changelog / Release History: see [CHANGELOG](CHANGELOG.md)
+
 ## ⚠️ Disclaimer: Enterprise-Grade Overkill Warning
 
 Yes, I'm fully aware that this project – for something as trivial as "measure DNS latency every 30 seconds" – is about as excessive as taking a battle tank to buy bread.

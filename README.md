@@ -2,6 +2,8 @@
 
 **Languages / Sprachen:** [English](README.en.md) | Deutsch (dieses Dokument)
 
+> Änderungsverlauf / Release-Historie: siehe [CHANGELOG](CHANGELOG.md)
+
 ## ⚠️ Disclaimer: Enterprise-Grade Overkill Warning
 
 *Ja, ich bin mir vollkommen bewusst, dass dieses Projekt für eine so simple Aufgabe wie "DNS-Latenz alle 30 Sekunden messen" ungefähr so übertrieben ist wie ein Kampfpanzer für den Einkauf beim Bäcker.*
