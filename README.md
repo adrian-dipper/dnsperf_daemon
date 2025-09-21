@@ -203,6 +203,44 @@ rm /var/run/dnsperf_daemon.pid
 ```
 Repräsentiert Durchschnittslatenz in Sekunden (6 Nachkommastellen ~ Mikrosekundenauflösung). Details im Log.
 
+## Contribution
+
+Beiträge willkommen. Bitte folgende Konventionen beachten:
+
+- Commit-Format (Conventional Commits):
+  - `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `ci: ...`, `chore: ...`, `perf: ...`, `style: ...`, `build: ...`, `revert: ...`, `security: ...`
+  - Optionaler Scope: `feat(logging): ...`
+  - Breaking Change: `feat(api)!: ...` + Footer `BREAKING CHANGE: ...`
+  - Quelle / Referenz für erlaubte Typen & Regex: `scripts/conventional_commits.sh` (mit `--regex` ausgeben)
+- Changelog-Pflicht: Jede nicht rein dokumentarische Änderung muss `CHANGELOG.md` aktualisieren.
+- Ausnahmen:
+  - Nur Doku oder CI: kein Changelog nötig
+  - Force-Skip (sparsam): Commit-Message enthält `[skip-changelog]`
+  - Commit-Format-Prüfung auslassen (selten / Ausnahmefall): Commit-Body enthält `[skip-conventional-check]`
+    - Erlaubte Fälle: Upstream-Merge den man nicht rewriten kann, große mechanische Refactors, automatisch generierte Versionsbumps
+    - Nicht erlaubt: normale Feature-, Fix-, Refactor- oder Docs-Commits (hier bitte umformulieren statt skippen)
+    - Bevorzugt immer: interaktives Rebase / Squash statt Skip
+- Validierung:
+  - PR-Workflow prüft Format & Changelog
+  - Nicht konforme Commits blockieren Merge (außer explizit geskippt)
+
+Beispiel:
+```
+feat(process): add child process supervision with forced termination timeout
+fix(reload): rebuild host list after config change
+docs(readme): add contribution guidelines
+```
+Skip-Beispiele (nicht empfohlen):
+```
+chore: update formatting
+
+[skip-changelog]
+```
+chore: vendor upstream merge
+
+[skip-conventional-check]
+```
+
 ## Lizenz
 
 Dieses Projekt steht unter der MIT-Lizenz. Siehe die [LICENSE](LICENSE) Datei für Details.

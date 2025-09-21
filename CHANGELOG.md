@@ -17,6 +17,32 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - Optional multi-metric export (min / max / p95 latency)
 
 ---
+## [0.3.3] - 2025-09-22 (Docs & CI Enhancements)
+### Added
+- (88e0a6b) feat: add changelog validation and contribution guidelines (CI workflow, contribution sections, enforcement script)
+
+### Changed
+- (41e03bf) ci(conventional): centralize commit type regex via scripts/conventional_commits.sh
+
+### Fixed
+- (5f7a022) fix: improve commit message validation logic in changelog_and_commits.yml
+- (25bfdc4) fix: enhance commit message validation regex in changelog_and_commits.yml
+- (f034142) ci: fix subshell issue in conventional commits validation loop (preserve INVALID state)
+- (6a27fe2) fix(script): initialize HAVE_CHANGELOG_CHANGE to avoid unbound variable under set -u
+
+### Docs
+- (8a0e84a) docs: update CHANGELOG.md for version 0.3.3 with CI and documentation enhancements
+- (d9288d8) docs: add detailed changelog update policy and validation reminders to Copilot instructions
+- (15a343f) docs: add Copilot instructions for conventional commit messages
+- (bc02553) docs: update CHANGELOG.md
+- (a37e9a6) docs: update README to clarify MIT license details and add motivational note
+- (6b86997) docs: update CHANGELOG version 0.3.3 section with recent validation fix commits
+- (0c0cacb) docs(readme): document [skip-conventional-check] directive in contribution guidelines
+- (2efce38) docs(contribution): reference centralized conventional commit regex script
+
+_Notes:_ Non-functional release focusing on policy, documentation, and CI/CD guardrails. Runtime behavior unchanged.
+
+---
 ## [0.3.2] - 2025-09-22 (Changelog & Preamble Alignment)
 ### Docs
 - (340d348) Introduce `CHANGELOG.md` and link from both READMEs
@@ -109,8 +135,8 @@ _Notes:_ Minimal functional daemon measuring DNS latency with static + downloade
 - Security: security-relevant fix or hardening
 
 ## Next Steps (Suggestion)
-1. Tag current state: `git tag -a v0.3.2 -m "Docs: add changelog & preamble alignment" 3af4721` (adjust hash if further commits occur before tagging)
-2. Optionally backfill tags for earlier inferred releases (0.3.1, 0.3.0, 0.2.0, 0.1.0)
+1. Tag current state: `git tag -a v0.3.3 -m "Docs & CI enhancements" d9288d8`
+2. Optionally backfill tags for earlier inferred releases (0.3.2, 0.3.1, 0.3.0, 0.2.0, 0.1.0)
 3. Automate future changelog updates via a lightweight script parsing `git log` since last tag
 4. Consider adopting Conventional Commits for clearer automated grouping
 

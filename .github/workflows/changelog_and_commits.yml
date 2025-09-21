@@ -1,0 +1,62 @@
+name: Changelog & Conventional Commits
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up shell
+        run: |
+          chmod +x scripts/check_changelog.sh
+          chmod +x scripts/conventional_commits.sh
+
+      - name: Check changelog presence when required
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          ./scripts/check_changelog.sh "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Verify conventional commit messages
+        run: |
+          set -euo pipefail
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          echo "Checking commit messages between $BASE_SHA..$HEAD_SHA"
+          INVALID=0
+          # Load canonical Conventional Commit regex from central script
+          source scripts/conventional_commits.sh
+          CC_REGEX="$(conventional_commit_regex)"
+          echo "Using regex: $CC_REGEX"
+          while IFS=$'\t' read -r commit_hash subject; do
+            [ -z "${commit_hash}" ] && continue
+            if echo "$subject" | grep -qi '^Merge '; then
+              continue
+            fi
+            if git log -1 --format=%B --grep='\[skip-conventional-check\]' "$commit_hash" >/dev/null 2>&1; then
+              echo "[SKIP] commit has [skip-conventional-check] flag: $commit_hash"
+              continue
+            fi
+            msg="$subject"
+            if ! echo "$msg" | grep -Eq "$CC_REGEX"; then
+              echo "[ERROR] Non-conforming commit message: $msg" >&2
+              INVALID=1
+            else
+              echo "[OK] $msg"
+            fi
+          done < <(git log --format='%H%x09%s' "$BASE_SHA".."$HEAD_SHA")
+          if [ $INVALID -ne 0 ]; then
+            echo "One or more commit messages do not follow Conventional Commits." >&2
+            exit 1
+          fi
+          echo "All commit messages conform to Conventional Commits."
+
+      - name: Summary
+        run: echo "Changelog + commit format validation passed."
