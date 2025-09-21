@@ -17,6 +17,19 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - Optional multi-metric export (min / max / p95 latency)
 
 ---
+## [0.3.3] - 2025-09-22 (Docs & CI Enhancements)
+### Added
+- (88e0a6b) feat: add changelog validation and contribution guidelines (CI workflow, contribution sections, enforcement script)
+
+### Docs
+- (d9288d8) docs: add detailed changelog update policy and validation reminders to Copilot instructions
+- (15a343f) docs: add Copilot instructions for conventional commit messages
+- (bc02553) docs: update CHANGELOG.md
+- (a37e9a6) docs: update README to clarify MIT license details and add motivational note
+
+_Notes:_ Non-functional release focusing on policy, documentation, and CI/CD guardrails. Runtime behavior unchanged.
+
+---
 ## [0.3.2] - 2025-09-22 (Changelog & Preamble Alignment)
 ### Docs
 - (340d348) Introduce `CHANGELOG.md` and link from both READMEs
@@ -109,8 +122,8 @@ _Notes:_ Minimal functional daemon measuring DNS latency with static + downloade
 - Security: security-relevant fix or hardening
 
 ## Next Steps (Suggestion)
-1. Tag current state: `git tag -a v0.3.2 -m "Docs: add changelog & preamble alignment" 3af4721` (adjust hash if further commits occur before tagging)
-2. Optionally backfill tags for earlier inferred releases (0.3.1, 0.3.0, 0.2.0, 0.1.0)
+1. Tag current state: `git tag -a v0.3.3 -m "Docs & CI enhancements" d9288d8`
+2. Optionally backfill tags for earlier inferred releases (0.3.2, 0.3.1, 0.3.0, 0.2.0, 0.1.0)
 3. Automate future changelog updates via a lightweight script parsing `git log` since last tag
 4. Consider adopting Conventional Commits for clearer automated grouping
 
