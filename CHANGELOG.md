@@ -21,6 +21,9 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 ### Added
 - (88e0a6b) feat: add changelog validation and contribution guidelines (CI workflow, contribution sections, enforcement script)
 
+### Changed
+- (41e03bf) ci(conventional): centralize commit type regex via scripts/conventional_commits.sh
+
 ### Fixed
 - (5f7a022) fix: improve commit message validation logic in changelog_and_commits.yml
 - (25bfdc4) fix: enhance commit message validation regex in changelog_and_commits.yml
@@ -35,6 +38,7 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - (a37e9a6) docs: update README to clarify MIT license details and add motivational note
 - (6b86997) docs: update CHANGELOG version 0.3.3 section with recent validation fix commits
 - (0c0cacb) docs(readme): document [skip-conventional-check] directive in contribution guidelines
+- (2efce38) docs(contribution): reference centralized conventional commit regex script
 
 _Notes:_ Non-functional release focusing on policy, documentation, and CI/CD guardrails. Runtime behavior unchanged.
 
