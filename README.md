@@ -156,8 +156,48 @@ make install  # Installation
 make start    # Daemon starten
 make status   # Status prüfen
 make result   # Neuestes Ergebnis anzeigen
+make test     # Backend-Funktionalitäts-Test ausführen
+make test-results  # Verfügbare Testergebnisse anzeigen
 ```
 
+## Testing
+
+Das Projekt enthält ein umfassendes Test-System für das Backend:
+
+### Backend-Test ausführen
+
+```bash
+# Test direkt ausführen
+./bin/test_dns_perf_backend.sh
+
+# Oder über Makefile
+make test
+```
+
+### Test-Features
+
+- **Reduzierte Host-Anzahl**: Verwendet nur 10 Domains statt 1000 für schnelle Tests
+- **Isolierte Umgebung**: Läuft in `/tmp` und beeinflusst nicht die Produktion
+- **Automatische Bereinigung**: Löscht alle temporären Dateien nach dem Test
+- **Ergebnis-Archivierung**: Speichert Testergebnis in `test_results/` mit Commit-Hash und Zeitstempel
+- **Umfassende Tests**: Testet alle Kernfunktionen (Config laden, Host-Update, DNS-Test, Integration)
+
+### Test-Ergebnisse
+
+Testergebnisse werden automatisch archiviert in:
+```
+test_results/dns_test_result_<commit-hash>_<timestamp>.txt
+```
+
+Beispiel: `dns_test_result_a1b2c3d_20231221_143045.txt`
+
+```bash
+# Verfügbare Testergebnisse anzeigen
+make test-results
+
+# Neuestes Testergebnis anzeigen
+ls -la test_results/ | tail -1
+```
 ## Überwachung
 
 ### Log-Datei überwachen:

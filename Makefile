@@ -49,6 +49,15 @@ result:
 	@echo "Latest DNS performance result:"
 	@cat $(DAEMON_WORKDIR)/latest_result.txt 2>/dev/null || echo "No result file found"
 
+test:
+	@echo "Running DNS Performance Daemon Backend Test..."
+	@chmod +x $(PROJECT_ROOT)/bin/test_dns_perf_backend.sh
+	@$(PROJECT_ROOT)/bin/test_dns_perf_backend.sh
+
+test-results:
+	@echo "Available test results:"
+	@ls -la $(PROJECT_ROOT)/test_results/ 2>/dev/null || echo "No test results found"
+
 clean:
 	@echo "Cleaning temporary files..."
 	@rm -f $(DAEMON_WORKDIR)/*.zip $(DAEMON_WORKDIR)/*.csv
@@ -78,6 +87,8 @@ help:
 	@echo "  status          - Show daemon status"
 	@echo "  logs            - Show daemon logs (follow mode)"
 	@echo "  result          - Show latest DNS test result"
+	@echo "  test            - Run backend functionality test"
+	@echo "  test-results    - Show available test results"
 	@echo "  clean           - Clean temporary files"
 	@echo "  add-runlevel    - Add service to default runlevel"
 	@echo "  del-runlevel    - Remove service from default runlevel"
@@ -90,5 +101,7 @@ help:
 	@echo "  make status           # Check status"
 	@echo "  make logs             # Monitor logs"
 	@echo "  make result           # View latest result"
+	@echo "  make test             # Run backend test"
+	@echo "  make test-results     # View test results"
 	@echo ""
-	@echo "Note: Run from the scripts/ directory or use full paths"
+	@echo "Note: Run from the project root directory"

@@ -231,4 +231,6 @@ daemon_main() {
 }
 
 # Run daemon
-daemon_main
+if [ -z "$DAEMON_MAIN_DISABLED" ]; then
+    daemon_main
+fi
