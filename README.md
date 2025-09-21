@@ -236,6 +236,7 @@ chore: update formatting
 
 [skip-changelog]
 ```
+```
 chore: vendor upstream merge
 
 [skip-conventional-check]
