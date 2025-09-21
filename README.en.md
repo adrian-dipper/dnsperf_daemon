@@ -220,9 +220,13 @@ Contributions are welcome. Please follow these conventions:
 - Exceptions:
   - Pure documentation / CI changes: changelog not required
   - Force skip (use sparingly): include `[skip-changelog]` in commit body
+  - Skip commit format check (rare / exceptional): include `[skip-conventional-check]` in commit body
+    - Acceptable cases: upstream merge commits you cannot reword, bulk mechanical refactors, auto-generated version bumps
+    - Not acceptable: normal feature, fix, refactor or docs commits (reword instead)
+    - Always prefer interactive rebase / squash over skipping
 - Validation:
   - PR workflow enforces commit format & changelog presence
-  - Non‑conforming commits block merge
+  - Non‑conforming commits block merge unless explicitly skipped
 
 Examples:
 ```
@@ -230,11 +234,16 @@ feat(process): add child process supervision with forced termination timeout
 fix(reload): rebuild host list after config change
 docs(readme): sync English and German contribution sections
 ```
-Skip example (not recommended):
+Skip examples (not recommended):
 ```
 chore: update formatting
 
 [skip-changelog]
+```
+```
+chore: vendor upstream merge
+
+[skip-conventional-check]
 ```
 
 ## License

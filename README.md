@@ -215,9 +215,13 @@ Beiträge willkommen. Bitte folgende Konventionen beachten:
 - Ausnahmen:
   - Nur Doku oder CI: kein Changelog nötig
   - Force-Skip (sparsam): Commit-Message enthält `[skip-changelog]`
-- Commit-Validierung:
-  - PR-Workflow prüft Format & Changelog.
-  - Nicht konforme Commits blockieren Merge.
+  - Commit-Format-Prüfung auslassen (selten / Ausnahmefall): Commit-Body enthält `[skip-conventional-check]`
+    - Erlaubte Fälle: Upstream-Merge den man nicht rewriten kann, große mechanische Refactors, automatisch generierte Versionsbumps
+    - Nicht erlaubt: normale Feature-, Fix-, Refactor- oder Docs-Commits (hier bitte umformulieren statt skippen)
+    - Bevorzugt immer: interaktives Rebase / Squash statt Skip
+- Validierung:
+  - PR-Workflow prüft Format & Changelog
+  - Nicht konforme Commits blockieren Merge (außer explizit geskippt)
 
 Beispiel:
 ```
@@ -225,12 +229,16 @@ feat(process): add child process supervision with forced termination timeout
 fix(reload): rebuild host list after config change
 docs(readme): add contribution guidelines
 ```
-
-CI-Skip-Beispiel (nicht empfohlen):
+Skip-Beispiele (nicht empfohlen):
 ```
 chore: update formatting
 
 [skip-changelog]
+```
+```
+chore: vendor upstream merge
+
+[skip-conventional-check]
 ```
 
 ## Lizenz
