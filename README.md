@@ -204,4 +204,8 @@ rm /var/run/dnsperf_daemon.pid
 Repräsentiert Durchschnittslatenz in Sekunden (6 Nachkommastellen ~ Mikrosekundenauflösung). Details im Log.
 
 ## Lizenz
-MIT-Lizenz – siehe `LICENSE`.
+
+Dieses Projekt steht unter der MIT-Lizenz. Siehe die [LICENSE](LICENSE) Datei für Details.
+
+---
+Wenn du das hier liest und dich fragst „Warum?“ – die Antwort lautet: *Weil iteratives Prompten plus Neugier dazu neigt, auszuufern.*
