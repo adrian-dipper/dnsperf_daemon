@@ -207,6 +207,36 @@ rm /var/run/dnsperf_daemon.pid
 ```
 Represents average latency in seconds (6 decimal places → microsecond-style precision). Full context in the log file.
 
+## Contribution
+
+Contributions are welcome. Please follow these conventions:
+
+- Commit format (Conventional Commits):
+  - `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `ci: ...`, `chore: ...`, `perf: ...`, `style: ...`, `build: ...`, `revert: ...`, `security: ...`
+  - Optional scope: `feat(logging): ...`
+  - Breaking change: `feat(api)!: ...` + footer `BREAKING CHANGE: <explanation>`
+- Changelog requirement: Any non‑documentation change must update `CHANGELOG.md`.
+- Bilingual rule: If you change *one* README, update the other (English + German) in the same PR.
+- Exceptions:
+  - Pure documentation / CI changes: changelog not required
+  - Force skip (use sparingly): include `[skip-changelog]` in commit body
+- Validation:
+  - PR workflow enforces commit format & changelog presence
+  - Non‑conforming commits block merge
+
+Examples:
+```
+feat(process): add child process supervision with forced termination timeout
+fix(reload): rebuild host list after config change
+docs(readme): sync English and German contribution sections
+```
+Skip example (not recommended):
+```
+chore: update formatting
+
+[skip-changelog]
+```
+
 ## License
 MIT License – see `LICENSE`.
 

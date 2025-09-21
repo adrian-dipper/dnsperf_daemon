@@ -203,6 +203,36 @@ rm /var/run/dnsperf_daemon.pid
 ```
 Repräsentiert Durchschnittslatenz in Sekunden (6 Nachkommastellen ~ Mikrosekundenauflösung). Details im Log.
 
+## Contribution
+
+Beiträge willkommen. Bitte folgende Konventionen beachten:
+
+- Commit-Format (Conventional Commits):
+  - `feat: ...`, `fix: ...`, `docs: ...`, `refactor: ...`, `test: ...`, `ci: ...`, `chore: ...`, `perf: ...`, `style: ...`, `build: ...`, `revert: ...`, `security: ...`
+  - Optionaler Scope: `feat(logging): ...`
+  - Breaking Change: `feat(api)!: ...` + Footer `BREAKING CHANGE: ...`
+- Changelog-Pflicht: Jede nicht rein dokumentarische Änderung muss `CHANGELOG.md` aktualisieren.
+- Ausnahmen:
+  - Nur Doku oder CI: kein Changelog nötig
+  - Force-Skip (sparsam): Commit-Message enthält `[skip-changelog]`
+- Commit-Validierung:
+  - PR-Workflow prüft Format & Changelog.
+  - Nicht konforme Commits blockieren Merge.
+
+Beispiel:
+```
+feat(process): add child process supervision with forced termination timeout
+fix(reload): rebuild host list after config change
+docs(readme): add contribution guidelines
+```
+
+CI-Skip-Beispiel (nicht empfohlen):
+```
+chore: update formatting
+
+[skip-changelog]
+```
+
 ## Lizenz
 
 Dieses Projekt steht unter der MIT-Lizenz. Siehe die [LICENSE](LICENSE) Datei für Details.

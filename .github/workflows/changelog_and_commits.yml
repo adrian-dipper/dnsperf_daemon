@@ -1,0 +1,56 @@
+name: Changelog & Conventional Commits
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up shell
+        run: |
+          chmod +x scripts/check_changelog.sh
+
+      - name: Check changelog presence when required
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          ./scripts/check_changelog.sh "$BASE_SHA" "$HEAD_SHA"
+
+      - name: Verify conventional commit messages
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          echo "Checking commit messages between $BASE_SHA..$HEAD_SHA"
+          INVALID=0
+          while IFS= read -r line; do
+            # Skip merge commits automatically
+            if echo "$line" | grep -qi '^Merge '; then
+              continue
+            fi
+            # Allow explicit skip
+            if git log -1 --format=%B --grep='\[skip-conventional-check\]' $(echo "$line" | cut -d' ' -f1) >/dev/null 2>&1; then
+              echo "[SKIP] commit has [skip-conventional-check] flag: $line"
+              continue
+            fi
+            msg=$(echo "$line" | cut -d' ' -f2-)
+            if ! echo "$msg" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|security)(\([a-z0-9_.-]+\))?(!)?: .{1,}'; then
+              echo "[ERROR] Non-conforming commit message: $msg"
+              INVALID=1
+            else
+              echo "[OK] $msg"
+            fi
+          done < <(git log --format='%H %s' "$BASE_SHA".."$HEAD_SHA")
+          if [ $INVALID -ne 0 ]; then
+            echo "One or more commit messages do not follow Conventional Commits." >&2
+            exit 1
+          fi
+
+      - name: Summary
+        run: echo "Changelog + commit format validation passed."
