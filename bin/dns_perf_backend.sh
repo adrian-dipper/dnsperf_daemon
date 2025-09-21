@@ -43,6 +43,7 @@ declare LATEST_RESULT_FILE="$DAEMON_WORKDIR/latest_result.txt"
 declare current_day=""
 declare last_update_day=""
 declare -a HOSTS
+declare -a RUNNING_PIDS=()  # Array to track running dnsperf PIDs
 
 DAILY_HOSTS=()
 
@@ -99,21 +100,181 @@ setup_daemon() {
     log "Daemon setup completed"
 }
 
+# Kill any running child processes with timeout
+kill_child_processes() {
+    local timeout=${1:-10}  # Default 10 seconds timeout
+    local pids
+    local process_name
+    local found_processes=()
+
+    # List of programs used by the daemon
+    local programs=("dnsperf" "wget" "unzip" "head" "cut" "sed" "sort")
+
+    # Find all child processes for each program
+    for program in "${programs[@]}"; do
+        case $program in
+            "dnsperf")
+                # Use specific pattern for dnsperf with DNS_SERVER
+                pids=$(pgrep -f "dnsperf.*${DNS_SERVER}" 2>/dev/null || true)
+                process_name="dnsperf (targeting ${DNS_SERVER})"
+                ;;
+            "wget")
+                # Find wget processes downloading our URL
+                pids=$(pgrep -f "wget.*$(basename "$URL")" 2>/dev/null || true)
+                process_name="wget (downloading domain list)"
+                ;;
+            "unzip")
+                # Find unzip processes working with our zip file
+                pids=$(pgrep -f "unzip.*$(basename "$ZIPFILE")" 2>/dev/null || true)
+                process_name="unzip (extracting domain list)"
+                ;;
+            *)
+                # For other programs, find any process with the name
+                pids=$(pgrep "^${program}$" 2>/dev/null || true)
+                process_name="$program"
+                ;;
+        esac
+
+        if [ -n "$pids" ]; then
+            log "Found running $process_name processes: $pids"
+            found_processes+=("$process_name:$pids")
+
+            # First try graceful termination with SIGTERM
+            for pid in $pids; do
+                if kill -TERM "$pid" 2>/dev/null; then
+                    log "Sent SIGTERM to $process_name process $pid"
+                fi
+            done
+        fi
+    done
+
+    if [ ${#found_processes[@]} -eq 0 ]; then
+        log "No child processes found to terminate"
+        return 0
+    fi
+
+    # Wait for graceful shutdown
+    local elapsed=0
+    while [ $elapsed -lt $timeout ]; do
+        local still_running=false
+
+        # Check if any processes are still running
+        for entry in "${found_processes[@]}"; do
+            local name="${entry%%:*}"
+            local pids_str="${entry#*:}"
+
+            for pid in $pids_str; do
+                if kill -0 "$pid" 2>/dev/null; then
+                    still_running=true
+                    break 2
+                fi
+            done
+        done
+
+        if ! $still_running; then
+            log "All child processes terminated gracefully"
+            return 0
+        fi
+
+        sleep 1
+        elapsed=$((elapsed + 1))
+    done
+
+    # Force kill remaining processes
+    local force_killed=false
+    for entry in "${found_processes[@]}"; do
+        local name="${entry%%:*}"
+        local pids_str="${entry#*:}"
+
+        for pid in $pids_str; do
+            if kill -0 "$pid" 2>/dev/null; then
+                log "Force killing $name process $pid (timeout after ${timeout}s)"
+                kill -KILL "$pid" 2>/dev/null || true
+                force_killed=true
+            fi
+        done
+    done
+
+    if $force_killed; then
+        # Final check after force kill
+        sleep 1
+        local final_warnings=()
+
+        for entry in "${found_processes[@]}"; do
+            local name="${entry%%:*}"
+            local pids_str="${entry#*:}"
+
+            for pid in $pids_str; do
+                if kill -0 "$pid" 2>/dev/null; then
+                    final_warnings+=("$name:$pid")
+                fi
+            done
+        done
+
+        if [ ${#final_warnings[@]} -gt 0 ]; then
+            local warning_msg="Warning: Could not kill processes:"
+            for warning in "${final_warnings[@]}"; do
+                warning_msg="$warning_msg ${warning#*:} (${warning%%:*})"
+            done
+            log "$warning_msg"
+        else
+            log "All child processes successfully terminated"
+        fi
+    fi
+}
+
 # Signal handlers
 cleanup() {
     log "Daemon received shutdown signal"
+
+    # Kill any running child processes with 10 second timeout
+    kill_child_processes 10
+
     rm -f "$DAEMON_PIDFILE"
+    log "Daemon stopped gracefully"
     exit 0
 }
 
 reload_config() {
     log "Received reload signal - reloading configuration"
     load_config
+
+    # Reset and update all configuration-dependent variables
+    DAILY_HOSTS=()
+
+    # Update file paths that depend on DAEMON_WORKDIR (in case it changed)
+    ZIPFILE="$DAEMON_WORKDIR/top-1m.csv.zip"
+    CSVFILE="$DAEMON_WORKDIR/top-1m.csv"
+    TEMP_FILE="$DAEMON_WORKDIR/top_domains.txt"
+    DNSPERF_FILE="$DAEMON_WORKDIR/dns_perf.txt"
+    DNSPERF_FILE_SORTED="$DAEMON_WORKDIR/dns_perf_sorted.txt"
+    LATEST_RESULT_FILE="$DAEMON_WORKDIR/latest_result.txt"
+
+    # Force host list update to reflect new STATIC_HOSTS configuration
+    last_update_day=""  # Reset to force update on next cycle
+
+    # Immediately update hosts to get accurate count for logging
+    update_hosts >/dev/null 2>&1
+
     log "Configuration reloaded successfully"
+    log "Updated configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, QUERIES_PER_SECOND=${QUERIES_PER_SECOND}"
+    log "Host list updated with ${#HOSTS[@]} domains (${#STATIC_HOSTS[@]} static + ${#DAILY_HOSTS[@]} dynamic)"
 }
 
 trap cleanup SIGTERM SIGINT
 trap reload_config SIGHUP
+
+# Interruptible sleep function that can be interrupted by signals
+interruptible_sleep() {
+    local sleep_time=$1
+    local elapsed=0
+
+    while [ $elapsed -lt $sleep_time ]; do
+        sleep 1 2>/dev/null || return 1  # Sleep for 1 second at a time
+        elapsed=$((elapsed + 1))
+    done
+    return 0
+}
 
 # === Update HOSTS daily with Top 100 domains ===
 update_hosts() {
@@ -223,7 +384,11 @@ daemon_main() {
 
         if [ $remaining_sleep -gt 0 ]; then
             log "Test took ${elapsed_time}s, sleeping for ${remaining_sleep}s"
-            sleep "$remaining_sleep"
+            if ! interruptible_sleep "$remaining_sleep"; then
+                # Sleep was interrupted, likely by a signal - exit gracefully
+                log "Sleep interrupted by signal, exiting"
+                break
+            fi
         else
             log "Test took ${elapsed_time}s (longer than interval of ${SLEEP_INTERVAL}s), running immediately"
         fi
