@@ -25,8 +25,8 @@ sensor:
   - platform: rest
     name: "DNS Latency Average"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.latency.average }}"
-    unit_of_measurement: "ms"
+    value_template: "{{ value_json.latency.average.value }}"
+    unit_of_measurement: "{{ value_json.latency.average.unit }}"
     device_class: duration
     state_class: measurement
     scan_interval: 30
@@ -35,8 +35,8 @@ sensor:
   - platform: rest
     name: "DNS Latency Minimum" 
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.latency.minimum }}"
-    unit_of_measurement: "ms"
+    value_template: "{{ value_json.latency.minimum.value }}"
+    unit_of_measurement: "{{ value_json.latency.minimum.unit }}"
     device_class: duration
     state_class: measurement
     scan_interval: 30
@@ -45,8 +45,8 @@ sensor:
   - platform: rest
     name: "DNS Latency Maximum"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.latency.maximum }}"
-    unit_of_measurement: "ms"
+    value_template: "{{ value_json.latency.maximum.value }}"
+    unit_of_measurement: "{{ value_json.latency.maximum.unit }}"
     device_class: duration
     state_class: measurement
     scan_interval: 30
@@ -56,7 +56,7 @@ sensor:
   - platform: rest
     name: "DNS Queries Sent"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.dnsperf_metrics.queries_sent }}"
+    value_template: "{{ value_json.dnsperf_metrics.queries_sent.value }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:send
@@ -64,7 +64,7 @@ sensor:
   - platform: rest
     name: "DNS Queries Completed"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.dnsperf_metrics.queries_completed }}"
+    value_template: "{{ value_json.dnsperf_metrics.queries_completed.value }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:check-circle
@@ -72,7 +72,7 @@ sensor:
   - platform: rest
     name: "DNS Queries Lost"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.dnsperf_metrics.queries_lost }}"
+    value_template: "{{ value_json.dnsperf_metrics.queries_lost.value }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:alert-circle
@@ -80,8 +80,8 @@ sensor:
   - platform: rest
     name: "DNS Queries Per Second"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.dnsperf_metrics.queries_per_second }}"
-    unit_of_measurement: "qps"
+    value_template: "{{ value_json.dnsperf_metrics.queries_per_second.value }}"
+    unit_of_measurement: "{{ value_json.dnsperf_metrics.queries_per_second.unit }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:speedometer
@@ -89,8 +89,8 @@ sensor:
   - platform: rest
     name: "DNS Test Runtime"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.dnsperf_metrics.runtime_seconds }}"
-    unit_of_measurement: "s"
+    value_template: "{{ value_json.dnsperf_metrics.runtime_seconds.value }}"
+    unit_of_measurement: "{{ value_json.dnsperf_metrics.runtime_seconds.unit }}"
     device_class: duration
     state_class: measurement
     scan_interval: 30
@@ -99,8 +99,8 @@ sensor:
   - platform: rest
     name: "DNS Success Rate"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.dnsperf_metrics.success_rate_percent }}"
-    unit_of_measurement: "%"
+    value_template: "{{ value_json.dnsperf_metrics.success_rate_percent.value }}"
+    unit_of_measurement: "{{ value_json.dnsperf_metrics.success_rate_percent.unit }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:percent
@@ -116,7 +116,8 @@ sensor:
   - platform: rest
     name: "DNS Total Hosts Tested"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.test_config.total_hosts }}"
+    value_template: "{{ value_json.test_config.total_hosts.value }}"
+    unit_of_measurement: "{{ value_json.test_config.total_hosts.unit }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:counter
@@ -124,7 +125,8 @@ sensor:
   - platform: rest
     name: "DNS Static Hosts"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.test_config.static_hosts }}"
+    value_template: "{{ value_json.test_config.static_hosts.value }}"
+    unit_of_measurement: "{{ value_json.test_config.static_hosts.unit }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:home-network
@@ -132,7 +134,8 @@ sensor:
   - platform: rest
     name: "DNS Dynamic Hosts"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.test_config.dynamic_hosts }}"
+    value_template: "{{ value_json.test_config.dynamic_hosts.value }}"
+    unit_of_measurement: "{{ value_json.test_config.dynamic_hosts.unit }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:web
@@ -140,7 +143,8 @@ sensor:
   - platform: rest
     name: "DNS Total Queries Generated"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.test_config.total_queries_generated }}"
+    value_template: "{{ value_json.test_config.total_queries_generated.value }}"
+    unit_of_measurement: "{{ value_json.test_config.total_queries_generated.unit }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:format-list-numbered
@@ -148,8 +152,8 @@ sensor:
   - platform: rest
     name: "DNS Target QPS"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.test_config.queries_per_second_target }}"
-    unit_of_measurement: "qps"
+    value_template: "{{ value_json.test_config.queries_per_second_target.value }}"
+    unit_of_measurement: "{{ value_json.test_config.queries_per_second_target.unit }}"
     scan_interval: 30
     icon: mdi:target
 
@@ -219,6 +223,15 @@ template:
             Never
           {% endif %}
         icon: mdi:clock-outline
+
+      # === Additional Unit-aware Template Sensors ===
+      # Extract unit information from JSON for display
+      - name: "DNS Latency Average with Unit"
+        state: >
+          {% set value = state_attr('sensor.dns_latency_average', 'json_data').latency.average.value %}
+          {% set unit = state_attr('sensor.dns_latency_average', 'json_data').latency.average.unit %}
+          {{ value }} {{ unit }}
+        icon: mdi:dns
 
 # === Example Automation ===
 automation:

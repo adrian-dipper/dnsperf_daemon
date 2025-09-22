@@ -424,12 +424,13 @@ run_dns_test() {
         local runtime_sec lost_queries
         
         # Parse latency line: "Average Latency: 45.2 ms (min 12.3, max 89.1)"
-        local latency_line
+        local latency_line latency_unit
         latency_line=$(echo "$dnsperf_output" | grep "Average Latency")
         
         if [ -n "$latency_line" ]; then
-            # Extract average latency
+            # Extract average latency and unit
             avg_latency=$(echo "$latency_line" | awk '{print $7}')
+            latency_unit=$(echo "$latency_line" | awk '{print $8}')
             
             # Extract min and max values using regex
             if [[ "$latency_line" =~ min[[:space:]]+([0-9]+\.[0-9]+) ]]; then
@@ -447,13 +448,23 @@ run_dns_test() {
             avg_latency="0.0"
             min_latency="0.0" 
             max_latency="0.0"
+            latency_unit="ms"  # fallback
         fi
         
-        # Extract other metrics from dnsperf output
+        # Extract other metrics from dnsperf output with units
+        local qps_line runtime_line
         queries_sent=$(echo "$dnsperf_output" | grep "Queries sent:" | awk '{print $3}' | sed 's/,//g')
         queries_completed=$(echo "$dnsperf_output" | grep "Queries completed:" | awk '{print $3}' | sed 's/,//g')
-        queries_per_sec=$(echo "$dnsperf_output" | grep "Queries per second:" | awk '{print $4}')
-        runtime_sec=$(echo "$dnsperf_output" | grep "Run time" | awk '{print $3}')
+        
+        # Extract QPS with unit
+        qps_line=$(echo "$dnsperf_output" | grep "Queries per second:")
+        queries_per_sec=$(echo "$qps_line" | awk '{print $4}')
+        
+        # Extract runtime with unit  
+        runtime_line=$(echo "$dnsperf_output" | grep "Run time")
+        runtime_sec=$(echo "$runtime_line" | awk '{print $3}')
+        runtime_unit=$(echo "$runtime_line" | awk '{print $4}' | sed 's/://g')  # Remove colon if present
+        
         lost_queries=$(echo "$dnsperf_output" | grep "Queries lost:" | awk '{print $3}' | sed 's/,//g')
         
         # Calculate success rate from dnsperf data
@@ -464,31 +475,73 @@ run_dns_test() {
             success_rate="0.00"
         fi
         
-        # Create JSON result using only dnsperf output
+        # Create JSON result using extracted units from dnsperf output
         local json_result
         json_result=$(cat <<EOF
 {
   "timestamp": "$test_start_iso",
   "latency": {
-    "average": ${avg_latency:-0.0},
-    "minimum": ${min_latency:-0.0},
-    "maximum": ${max_latency:-0.0}
+    "average": {
+      "value": ${avg_latency:-0.0},
+      "unit": "${latency_unit:-ms}"
+    },
+    "minimum": {
+      "value": ${min_latency:-0.0},
+      "unit": "${latency_unit:-ms}"
+    },
+    "maximum": {
+      "value": ${max_latency:-0.0},
+      "unit": "${latency_unit:-ms}"
+    }
   },
   "dnsperf_metrics": {
-    "queries_sent": ${queries_sent:-0},
-    "queries_completed": ${queries_completed:-0},
-    "queries_lost": ${lost_queries:-0},
-    "queries_per_second": ${queries_per_sec:-0.0},
-    "runtime_seconds": ${runtime_sec:-0.0},
-    "success_rate_percent": $success_rate
+    "queries_sent": {
+      "value": ${queries_sent:-0},
+      "unit": "count"
+    },
+    "queries_completed": {
+      "value": ${queries_completed:-0},
+      "unit": "count"
+    },
+    "queries_lost": {
+      "value": ${lost_queries:-0},
+      "unit": "count"
+    },
+    "queries_per_second": {
+      "value": ${queries_per_sec:-0.0},
+      "unit": "qps"
+    },
+    "runtime_seconds": {
+      "value": ${runtime_sec:-0.0},
+      "unit": "${runtime_unit:-s}"
+    },
+    "success_rate_percent": {
+      "value": $success_rate,
+      "unit": "%"
+    }
   },
   "test_config": {
     "dns_server": "$DNS_SERVER",
-    "total_hosts": ${#HOSTS[@]},
-    "static_hosts": ${#STATIC_HOSTS[@]},
-    "dynamic_hosts": ${#DAILY_HOSTS[@]},
-    "total_queries_generated": $total_queries,
-    "queries_per_second_target": $QUERIES_PER_SECOND
+    "total_hosts": {
+      "value": ${#HOSTS[@]},
+      "unit": "count"
+    },
+    "static_hosts": {
+      "value": ${#STATIC_HOSTS[@]},
+      "unit": "count"
+    },
+    "dynamic_hosts": {
+      "value": ${#DAILY_HOSTS[@]},
+      "unit": "count"
+    },
+    "total_queries_generated": {
+      "value": $total_queries,
+      "unit": "count"
+    },
+    "queries_per_second_target": {
+      "value": $QUERIES_PER_SECOND,
+      "unit": "qps"
+    }
   }
 }
 EOF
@@ -509,32 +562,74 @@ EOF
     else
         log "DNS test failed or returned no results"
         
-        # Create error JSON result
+        # Create error JSON result with units
         local error_json_result
         error_json_result=$(cat <<EOF
 {
   "timestamp": "$test_start_iso",
   "error": true,
   "latency": {
-    "average": 0.0,
-    "minimum": 0.0,
-    "maximum": 0.0
+    "average": {
+      "value": 0.0,
+      "unit": "ms"
+    },
+    "minimum": {
+      "value": 0.0,
+      "unit": "ms"
+    },
+    "maximum": {
+      "value": 0.0,
+      "unit": "ms"
+    }
   },
   "dnsperf_metrics": {
-    "queries_sent": 0,
-    "queries_completed": 0,
-    "queries_lost": 0,
-    "queries_per_second": 0.0,
-    "runtime_seconds": 0.0,
-    "success_rate_percent": 0.0
+    "queries_sent": {
+      "value": 0,
+      "unit": "count"
+    },
+    "queries_completed": {
+      "value": 0,
+      "unit": "count"
+    },
+    "queries_lost": {
+      "value": 0,
+      "unit": "count"
+    },
+    "queries_per_second": {
+      "value": 0.0,
+      "unit": "qps"
+    },
+    "runtime_seconds": {
+      "value": 0.0,
+      "unit": "s"
+    },
+    "success_rate_percent": {
+      "value": 0.0,
+      "unit": "%"
+    }
   },
   "test_config": {
     "dns_server": "$DNS_SERVER",
-    "total_hosts": ${#HOSTS[@]},
-    "static_hosts": ${#STATIC_HOSTS[@]},
-    "dynamic_hosts": ${#DAILY_HOSTS[@]},
-    "total_queries_generated": $total_queries,
-    "queries_per_second_target": $QUERIES_PER_SECOND
+    "total_hosts": {
+      "value": ${#HOSTS[@]},
+      "unit": "count"
+    },
+    "static_hosts": {
+      "value": ${#STATIC_HOSTS[@]},
+      "unit": "count"
+    },
+    "dynamic_hosts": {
+      "value": ${#DAILY_HOSTS[@]},
+      "unit": "count"
+    },
+    "total_queries_generated": {
+      "value": $total_queries,
+      "unit": "count"
+    },
+    "queries_per_second_target": {
+      "value": $QUERIES_PER_SECOND,
+      "unit": "qps"
+    }
   }
 }
 EOF
