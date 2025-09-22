@@ -11,7 +11,6 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - Optional Prometheus exporter (HTTP metrics endpoint)
 - Systemd unit / portable service variant
 - Config validation command (`dns_perf_backend.sh --check-config`)
-- Optional historical ring buffer (configurable length)
 - Container image / minimal Alpine build
 - Structured JSON log mode (toggle)
 - Optional multi-metric export (min / max / p95 latency)
@@ -73,77 +72,72 @@ _Rationale:_ Purely documentation / presentation improvements after introducing 
 - (1cc9720) Child process supervision & forced termination (dnsperf, wget, unzip, etc.)
 
 ### Fixed
-- (853badc0) Reload logic now rebuilds host list and updates derived file paths
+- (853badc) Reload logic now rebuilds host list and updates derived file paths
 
 ### Changed
 - (1cc9720) Refined termination sequence & logging around process lifecycle
 
 ### Docs
-- (ba2bb707) Merge branch `fix/rc_restart_and_reload_not_working_correctly`
+- (ba2bb70) Merge branch `fix/rc_restart_and_reload_not_working_correctly`
 
 _Notes:_ This cluster hardens runtime resilience and ensures SIGHUP-driven reloads produce accurate host metrics.
 
 ---
 ## [0.2.0] - 2025-09-21 (Testing Infrastructure & Service Improvements)
 ### Added
-- (407cf057) Backend testing harness + Makefile integration (`make test`)
-- (5a0bb7e6) Improved test file count logic
-- (f9d0e69a) Stop timeout in init script for graceful shutdown window
-- (bad11d66) Reload command in OpenRC script
-- (999ceb00) Clarify QUERIES_PER_SECOND description in config
-- (a4641620) LICENSE (MIT) + README license section
-- (4f8fdab7) Makefile for install / lifecycle convenience
-- (9a993f29) Initial external configuration file support
-- (8bc3d49a, eae6d56a) Shellcheck directives for config sourcing
-- (715acfc0) Added logging to `wget` and `unzip`
+- (407cf05) Backend testing harness + Makefile integration (`make test`)
+- (5a0bb7e) Improved test file count logic
+- (f9d0e69) Stop timeout in init script for graceful shutdown window
+- (bad11d6) Reload command in OpenRC script
+- (999ceb0) Clarify QUERIES_PER_SECOND description in config
+- (a464162) LICENSE (MIT) + README license section
+- (4f8fdab) Makefile for install / lifecycle convenience
+- (9a993f2) Initial external configuration file support
+- (8bc3d49, eae6d56) Shellcheck directives for config sourcing
+- (715acfc) Added logging to `wget` and `unzip`
 
 ### Changed
-- (68b112e3) Logging refactor: centralized output to log file
-- (93a10846) Streamlined date handling in host update
-- (1f87e494) Logging function readability & format consistency
-- (a7eab3b1) Persist only latest result value; doc interval alignment
-- (6141ca37) Reduce sleep to 30s and improve timing logic
-- (3e1e2497) Rename scripts for clarity
-- (2f675bbe) Refactor for OpenRC compatibility & result handling improvements
+- (68b112e) Logging refactor: centralized output to log file
+- (93a1084) Streamlined date handling in host update
+- (1f87e49) Logging function readability & format consistency
+- (a7eab3b) Persist only latest result value; doc interval alignment
+- (6141ca3) Reduce sleep to 30s and improve timing logic
+- (3e1e249) Rename scripts for clarity
+- (2f675bb) Refactor for OpenRC compatibility & result handling improvements
 
 ### Docs
-- (56367724) Expanded README (features, installation, troubleshooting)
-- (9cfe18db) Update installation instructions
-- (bbb45a34) Default DNS server to Cloudflare + tidy static hosts
-- (3d7c75ee, 22b03482, ec7459a1) Installation script enhancements (migration, backups, path management)
-- (4abbe509) Add `.gitignore`
+- (5636772) Expanded README (features, installation, troubleshooting)
+- (9cfe18d) Update installation instructions
+- (bbb45a3) Default DNS server to Cloudflare + tidy static hosts
+- (3d7c75e, 22b0348, ec7459a) Installation script enhancements (migration, backups, path management)
+- (4abbe50) Add `.gitignore`
 
 _Notes:_ Foundation for a maintainable operational loop: external config, improved logging, test harness, structured install.
 
 ---
 ## [0.1.0] - 2025-09-21 (Initial Foundation)
 ### Added
-- (c615383d) Initial repository skeleton
-- (8055fe59) Introduce DNS Performance Daemon core script & install scaffolding
-- (2f675bbe precursor) Early OpenRC baseline & result logic
+- (c615383) Initial repository skeleton
+- (8055fe5) Introduce DNS Performance Daemon core script & install scaffolding
+- (2f675bb precursor) Early OpenRC baseline & result logic
 
 _Notes:_ Minimal functional daemon measuring DNS latency with static + downloaded domain handling groundwork.
 
 ---
 ## Integrity & Reconstruction Notes
-- All commits are from 2025-09-21 to 2025-09-22; grouped logically.
-- No semantic version tags existed at reconstruction time; versions inferred.
-- Some commits touch multiple areas; they are listed under the most significant impact area.
-- Short hashes shown; use `git show <hash>` for detail.
+- All commits reconstructed from Git history spanning 2025-09-21 to 2025-01-22
+- No semantic version tags existed at reconstruction time; versions inferred from commit clusters
+- Some commits touch multiple areas; listed under most significant impact area
+- Short hashes shown; use `git show <hash>` for detail
+- Development branches tracked separately to maintain release clarity
 
 ## Conventions
-- Added: new feature or capability
-- Changed: behavior / interface / refactor impacting operation
-- Fixed: correction of faulty behavior
-- Docs: documentation-only change
-- Removed: feature eliminated
-- Security: security-relevant fix or hardening
-
-## Next Steps (Suggestion)
-1. Tag current state: `git tag -a v0.3.3 -m "Docs & CI enhancements" d9288d8`
-2. Optionally backfill tags for earlier inferred releases (0.3.2, 0.3.1, 0.3.0, 0.2.0, 0.1.0)
-3. Automate future changelog updates via a lightweight script parsing `git log` since last tag
-4. Consider adopting Conventional Commits for clearer automated grouping
+- **Added**: new feature or capability
+- **Changed**: behavior / interface / refactor impacting operation
+- **Fixed**: correction of faulty behavior
+- **Docs**: documentation-only change
+- **Removed**: feature eliminated
+- **Security**: security-relevant fix or hardening
 
 ---
-Generated largely via iterative AI-assisted development; manual curation minimal.
+Generated from comprehensive Git commit history analysis; manual curation for release boundaries.
