@@ -112,8 +112,8 @@ SLEEP_INTERVAL=30
 # Target DNS server
 DNS_SERVER="1.1.1.1"
 
-# Query dispatch rate for dnsperf
-QUERIES_PER_SECOND=20
+# Maximum number of concurrent DNS queries
+MAX_OUTSTANDING_QUERIES=20
 
 # Domain list source (Cisco Umbrella Top 1M)
 URL="http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip"
@@ -179,7 +179,7 @@ rc-service dnsperf_daemon status
 | Symptom | Suggestion |
 |---------|------------|
 | No result file | Check log, verify dnsperf installed |
-| High CPU usage | Lower QUERIES_PER_SECOND or raise SLEEP_INTERVAL |
+| High CPU usage | Lower MAX_OUTSTANDING_QUERIES or raise SLEEP_INTERVAL |
 | Slow / stuck stop | Inspect log: hanging child (dnsperf / wget)? |
 | Reload has no effect | Confirm SIGHUP sent to correct PID (check pidfile) |
 | Domains not updating | Check date rollover & write permissions in work dir |

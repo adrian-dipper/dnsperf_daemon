@@ -36,7 +36,7 @@ export CONFIG_FILE="$TEST_WORKDIR/test.conf"
 # Reduced test settings
 export SLEEP_INTERVAL=5
 export DNS_SERVER="1.1.1.1"
-export QUERIES_PER_SECOND=10
+export MAX_OUTSTANDING_QUERIES=10
 export URL="http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip"
 export DOMAIN_COUNT=10  # Drastically reduced for testing
 export STATIC_HOSTS=("google.com" "cloudflare.com" "github.com")
@@ -136,7 +136,7 @@ setup_test_env() {
 # Test Configuration for DNS Performance Daemon
 SLEEP_INTERVAL=$SLEEP_INTERVAL
 DNS_SERVER="$DNS_SERVER"
-QUERIES_PER_SECOND=$QUERIES_PER_SECOND
+MAX_OUTSTANDING_QUERIES=$MAX_OUTSTANDING_QUERIES
 URL="$URL"
 DOMAIN_COUNT=$DOMAIN_COUNT
 STATIC_HOSTS=(
@@ -236,7 +236,7 @@ run_integration_test() {
         setup_daemon
 
         log "Integration test: DNS Performance Daemon started (PID: $$)"
-        log "Using configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, QUERIES_PER_SECOND=${QUERIES_PER_SECOND}"
+        log "Using configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, MAX_OUTSTANDING_QUERIES=${MAX_OUTSTANDING_QUERIES}"
 
         # Create PID file
         echo $$ > "$DAEMON_PIDFILE"

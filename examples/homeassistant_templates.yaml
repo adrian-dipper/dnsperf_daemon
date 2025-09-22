@@ -80,8 +80,8 @@ sensor:
   - platform: rest
     name: "DNS Queries Per Second"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.dnsperf_metrics.queries_per_second.value }}"
-    unit_of_measurement: "{{ value_json.dnsperf_metrics.queries_per_second.unit }}"
+    value_template: "{{ value_json.dnsperf_metrics.queries_per_second_achieved.value }}"
+    unit_of_measurement: "{{ value_json.dnsperf_metrics.queries_per_second_achieved.unit }}"
     state_class: measurement
     scan_interval: 30
     icon: mdi:speedometer
@@ -150,10 +150,10 @@ sensor:
     icon: mdi:format-list-numbered
     
   - platform: rest
-    name: "DNS Target QPS"
+    name: "DNS Max Outstanding Queries"
     resource: http://your-server/api/dns-latency
-    value_template: "{{ value_json.test_config.queries_per_second_target.value }}"
-    unit_of_measurement: "{{ value_json.test_config.queries_per_second_target.unit }}"
+    value_template: "{{ value_json.test_config.max_outstanding_queries.value }}"
+    unit_of_measurement: "{{ value_json.test_config.max_outstanding_queries.unit }}"
     scan_interval: 30
     icon: mdi:target
 

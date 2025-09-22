@@ -108,8 +108,8 @@ SLEEP_INTERVAL=30
 # Ziel-DNS-Server
 DNS_SERVER="1.1.1.1"
 
-# Abfragerate für dnsperf
-QUERIES_PER_SECOND=20
+# Maximale Anzahl gleichzeitiger DNS-Abfragen
+MAX_OUTSTANDING_QUERIES=20
 
 # Domainlisten-Quelle (Cisco Umbrella Top 1M)
 URL="http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip"
@@ -235,7 +235,6 @@ Skip-Beispiele (nicht empfohlen):
 chore: update formatting
 
 [skip-changelog]
-```
 ```
 chore: vendor upstream merge
 

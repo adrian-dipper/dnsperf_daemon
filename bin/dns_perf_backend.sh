@@ -21,7 +21,7 @@ load_config() {
         # Default values
         SLEEP_INTERVAL=30
         DNS_SERVER="1.1.1.1" # Default DNS server to test against
-        QUERIES_PER_SECOND=20 # Number of queries per second dnsperf will wait for resolution of
+        MAX_OUTSTANDING_QUERIES=100 # Maximum number of queries outstanding (default from dnsperf -h)
         URL="http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip"
         DOMAIN_COUNT=1000
         STATIC_HOSTS=(
@@ -258,7 +258,7 @@ reload_config() {
     update_hosts >/dev/null 2>&1
 
     log "Configuration reloaded successfully"
-    log "Updated configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, QUERIES_PER_SECOND=${QUERIES_PER_SECOND}"
+    log "Updated configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, MAX_OUTSTANDING_QUERIES=${MAX_OUTSTANDING_QUERIES}"
     log "Host list updated with ${#HOSTS[@]} domains (${#STATIC_HOSTS[@]} static + ${#DAILY_HOSTS[@]} dynamic)"
 }
 
@@ -415,7 +415,7 @@ run_dns_test() {
 
     # Run DNS performance test and capture full output
     local dnsperf_output
-    dnsperf_output=$(dnsperf -W -q "$QUERIES_PER_SECOND" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" 2>/dev/null)
+    dnsperf_output=$(dnsperf -W -q "$MAX_OUTSTANDING_QUERIES" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" 2>/dev/null)
     
     if [ -n "$dnsperf_output" ]; then
         # Extract metrics directly from dnsperf output
@@ -507,7 +507,7 @@ run_dns_test() {
       "value": ${lost_queries:-0},
       "unit": "count"
     },
-    "queries_per_second": {
+    "queries_per_second_achieved": {
       "value": ${queries_per_sec:-0.0},
       "unit": "qps"
     },
@@ -538,9 +538,9 @@ run_dns_test() {
       "value": $total_queries,
       "unit": "count"
     },
-    "queries_per_second_target": {
-      "value": $QUERIES_PER_SECOND,
-      "unit": "qps"
+    "max_outstanding_queries": {
+      "value": $MAX_OUTSTANDING_QUERIES,
+      "unit": "count"
     }
   }
 }
@@ -595,7 +595,7 @@ EOF
       "value": 0,
       "unit": "count"
     },
-    "queries_per_second": {
+    "queries_per_second_achieved": {
       "value": 0.0,
       "unit": "qps"
     },
@@ -626,9 +626,9 @@ EOF
       "value": $total_queries,
       "unit": "count"
     },
-    "queries_per_second_target": {
-      "value": $QUERIES_PER_SECOND,
-      "unit": "qps"
+    "max_outstanding_queries": {
+      "value": $MAX_OUTSTANDING_QUERIES,
+      "unit": "count"
     }
   }
 }
@@ -647,7 +647,7 @@ daemon_main() {
 
     setup_daemon
     log "DNS Performance Daemon started (PID: $$)"
-    log "Using configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, QUERIES_PER_SECOND=${QUERIES_PER_SECOND}"
+    log "Using configuration: SLEEP_INTERVAL=${SLEEP_INTERVAL}s, DNS_SERVER=${DNS_SERVER}, MAX_OUTSTANDING_QUERIES=${MAX_OUTSTANDING_QUERIES}"
 
     # Create PID file
     echo $$ > "$DAEMON_PIDFILE"
