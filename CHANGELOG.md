@@ -25,11 +25,16 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - (a8f2de0) Error handling with JSON error responses when DNS tests fail
 - (e166ca4) Example Home Assistant REST sensor configurations (`examples/homeassistant_templates.yaml`)
 - (c7670fa) Example nginx configuration for HTTP API endpoint (`examples/nginx-dnsperf-api.conf`)
+- (01d6bf7) Automatic configuration migration in `install.sh` to preserve user's original values during upgrades
+- (44ce62e) Enhanced JSON output with proper unit information for all metrics
 
 ### Changed
 - (78fa246, a8f2de0) **BREAKING:** Output format changed from single latency value to comprehensive JSON structure
 - (a8f2de0) **BREAKING:** History file now stores JSON data instead of simple latency values
 - (a8f2de0) **BREAKING:** `latest_result.txt` now contains JSON instead of plain text
+- (0ba251d) **BREAKING:** Configuration variable renamed from `QUERIES_PER_SECOND` to `MAX_OUTSTANDING_QUERIES`
+- (0ba251d) **BREAKING:** JSON output structure updated with corrected field names
+- (0ba251d) Default maximum outstanding queries increased from 20 to 100 (dnsperf standard default)
 - (a8f2de0) Enhanced logging to display all latency metrics (min/avg/max) and success rates
 - (a8f2de0) Improved error handling with structured JSON error responses
 - (e166ca4, c7670fa) Moved integration examples to dedicated `examples/` directory
@@ -38,17 +43,27 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - (a8f2de0) More robust parsing of dnsperf output using only native dnsperf metrics
 - (a8f2de0) Better handling of missing or malformed dnsperf output
 - (a8f2de0) Improved regex patterns for extracting min/max latency values
+- (0ba251d) Corrected misleading variable name `QUERIES_PER_SECOND` to `MAX_OUTSTANDING_QUERIES` throughout codebase
+- (0ba251d) Variable now correctly reflects its actual function: controlling dnsperf's `-q` parameter (max concurrent queries)
+- (0ba251d) Fixed JSON output field names: `queries_per_second` → `queries_per_second_achieved`, `queries_per_second_target` → `max_outstanding_queries`
 
 ### Docs
 - (e166ca4) Added comprehensive Home Assistant integration examples
 - (c7670fa) Added nginx configuration example for HTTP API exposure
 - (e166ca4, c7670fa) Updated documentation structure with examples directory
+- (0ba251d) Updated all README files (English and German) with corrected variable names and descriptions
+- (0ba251d) Fixed Home Assistant integration examples to use new JSON field names
+- (0ba251d) Corrected nginx configuration example with proper JSON structure
+- (0ba251d) Updated troubleshooting sections with correct variable references
 
-_Notes:_ **Major version bump (1.0.0) due to breaking changes in output format.** The daemon now outputs structured JSON data instead of simple latency values. This enables richer integration with monitoring systems like Home Assistant, Grafana, and others. Users upgrading from previous versions will need to update any scripts or systems that consume the daemon's output to handle the new JSON format.
+_Notes:_ **Major version bump (1.0.0) due to breaking changes in output format.** The daemon now outputs structured JSON data instead of simple latency values. This enables richer integration with monitoring systems like Home Assistant, Grafana, and others. Users upgrading from previous versions will need to update any scripts or systems that consume the daemon's output to handle the new JSON format. Additionally, the misleading `QUERIES_PER_SECOND` variable has been corrected to `MAX_OUTSTANDING_QUERIES` with automatic migration support.
 
 **Migration Guide:**
 - Old format: `45.2` (single latency value)
 - New format: `{"latency": {"average": 45.2, "minimum": 12.3, "maximum": 89.1}, ...}` (comprehensive JSON)
+- Configuration: `QUERIES_PER_SECOND=20` → `MAX_OUTSTANDING_QUERIES=20` (automatic during install/update)  
+- JSON: `queries_per_second_target` → `max_outstanding_queries`
+- JSON: `queries_per_second` → `queries_per_second_achieved` (clarifies this is measured, not configured value)
 - Update consuming applications to parse JSON and extract `value_json.latency.average` for backward compatibility
 - History files from previous versions are incompatible and should be archived/cleared
 
