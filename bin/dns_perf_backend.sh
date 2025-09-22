@@ -315,12 +315,12 @@ cleanup_history() {
     # Keep entries newer than cutoff date
     local kept_entries=0
     local removed_entries=0
-    
+
     if [ -f "$HISTORY_FILE" ]; then
         while IFS=',' read -r timestamp_part latency; do
             # Extract date part from timestamp (YYYY-MM-DD)
             local entry_date="${timestamp_part%% *}"
-            
+
             # Compare dates (string comparison works for YYYY-MM-DD format)
             if [[ "$entry_date" > "$cutoff_date" ]] || [[ "$entry_date" == "$cutoff_date" ]]; then
                 echo "${timestamp_part},${latency}" >> "$temp_history"
@@ -405,17 +405,42 @@ run_dns_test() {
     # Sort and remove duplicates
     sort "$DNSPERF_FILE" | uniq >"$DNSPERF_FILE_SORTED"
 
-    # Run DNS performance test
-    local result
-    result=$(dnsperf -W -q "$QUERIES_PER_SECOND" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" 2>/dev/null | grep "Average Latency" | cut -d" " -f7)
+    # Run DNS performance test and capture full latency line
+    local latency_line
+    latency_line=$(dnsperf -W -q "$QUERIES_PER_SECOND" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" 2>/dev/null | grep "Average Latency")
 
-    if [ -n "$result" ]; then
-        # Store only the latest result (value only, no timestamp)
-        echo "$result" > "$LATEST_RESULT_FILE"
-        log "DNS test completed - Average Latency: ${result}ms"
+    if [ -n "$latency_line" ]; then
+        # Parse latency values from the output
+        # Expected format: "Average Latency: 45.2 ms (min 12.3, max 89.1)"
+        local avg_latency min_latency max_latency
         
+        # Extract average latency (field 7 when split by spaces)
+        avg_latency=$(echo "$latency_line" | awk '{print $7}')
+        
+        # Extract min and max values using regex
+        if [[ "$latency_line" =~ min[[:space:]]+([0-9]+\.[0-9]+) ]]; then
+            min_latency="${BASH_REMATCH[1]}"
+        else
+            min_latency="0.0"
+        fi
+        
+        if [[ "$latency_line" =~ max[[:space:]]+([0-9]+\.[0-9]+) ]]; then
+            max_latency="${BASH_REMATCH[1]}"
+        else
+            max_latency="0.0"
+        fi
+        
+        # Create JSON result
+        local json_result
+        json_result=$(printf '{"average": %s, "minimum": %s, "maximum": %s}' "$avg_latency" "$min_latency" "$max_latency")
+        
+        # Store the JSON result in the latest result file
+        echo "$json_result" > "$LATEST_RESULT_FILE"
+        
+        log "DNS test completed - Average: ${avg_latency}ms, Min: ${min_latency}ms, Max: ${max_latency}ms"
+
         # Add result to history
-        add_to_history "$result"
+        add_to_history "$json_result"
         
         # Cleanup old history entries
         cleanup_history
