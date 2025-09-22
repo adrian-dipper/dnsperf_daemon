@@ -210,6 +210,66 @@ echo "Setting permissions..."
 chown -R "$DAEMON_USER:$DAEMON_USER" "$DAEMON_WORKDIR"
 chmod 755 "$DAEMON_WORKDIR"
 
+# Function to migrate QUERIES_PER_SECOND to MAX_OUTSTANDING_QUERIES in config file
+migrate_config_variables() {
+    local config_file="$1"
+    
+    if [ ! -f "$config_file" ]; then
+        return 0
+    fi
+    
+    # Check if old variable exists and new one doesn't
+    if grep -q "^[[:space:]]*QUERIES_PER_SECOND[[:space:]]*=" "$config_file" && ! grep -q "^[[:space:]]*MAX_OUTSTANDING_QUERIES[[:space:]]*=" "$config_file"; then
+        echo "  Migrating QUERIES_PER_SECOND to MAX_OUTSTANDING_QUERIES..."
+        
+        # Extract the value from the old variable
+        local old_value
+        old_value=$(grep "^[[:space:]]*QUERIES_PER_SECOND[[:space:]]*=" "$config_file" | sed 's/^[[:space:]]*QUERIES_PER_SECOND[[:space:]]*=[[:space:]]*//' | sed 's/[[:space:]]*#.*//')
+        
+        if [ -n "$old_value" ]; then
+            # Create a temporary file for the migration
+            local temp_file="${config_file}.migration.tmp"
+            
+            # Process the file line by line
+            while IFS= read -r line || [ -n "$line" ]; do
+                if echo "$line" | grep -q "^[[:space:]]*QUERIES_PER_SECOND[[:space:]]*="; then
+                    # Replace the old variable with the new one, preserving the value and any comment
+                    local comment_part
+                    comment_part=$(echo "$line" | sed 's/^[^#]*//')
+                    if [ -n "$comment_part" ]; then
+                        echo "MAX_OUTSTANDING_QUERIES=$old_value $comment_part"
+                    else
+                        echo "MAX_OUTSTANDING_QUERIES=$old_value # Maximum number of queries outstanding (migrated from QUERIES_PER_SECOND)"
+                    fi
+                    echo "  Migrated value: QUERIES_PER_SECOND=$old_value -> MAX_OUTSTANDING_QUERIES=$old_value"
+                else
+                    echo "$line"
+                fi
+            done < "$config_file" > "$temp_file"
+            
+            # Replace the original file with the migrated version
+            mv "$temp_file" "$config_file"
+            echo "  Configuration variable migration completed"
+        else
+            echo "  Warning: Could not extract value from QUERIES_PER_SECOND, skipping migration"
+        fi
+    elif grep -q "^[[:space:]]*QUERIES_PER_SECOND[[:space:]]*=" "$config_file" && grep -q "^[[:space:]]*MAX_OUTSTANDING_QUERIES[[:space:]]*=" "$config_file"; then
+        echo "  Both QUERIES_PER_SECOND and MAX_OUTSTANDING_QUERIES found in config"
+        echo "  Removing old QUERIES_PER_SECOND variable..."
+        
+        # Remove the old variable line
+        local temp_file="${config_file}.cleanup.tmp"
+        grep -v "^[[:space:]]*QUERIES_PER_SECOND[[:space:]]*=" "$config_file" > "$temp_file"
+        mv "$temp_file" "$config_file"
+        echo "  Old QUERIES_PER_SECOND variable removed"
+    fi
+}
+
+# Migrate configuration variables for existing installations
+if [ "$EXISTING_INSTALLATION" = true ]; then
+    migrate_config_variables "$CONFIG_DIR/dnsperf_daemon.conf"
+fi
+
 # Restart daemon if it was running before
 if [ "$EXISTING_INSTALLATION" = true ] && [ "$DAEMON_WAS_RUNNING" = true ]; then
     echo "Restarting daemon..."
