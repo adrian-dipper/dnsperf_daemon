@@ -13,7 +13,44 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - Config validation command (`dns_perf_backend.sh --check-config`)
 - Container image / minimal Alpine build
 - Structured JSON log mode (toggle)
-- Optional multi-metric export (min / max / p95 latency)
+
+---
+## [1.0.0] - 2025-01-22 (JSON Output Format - Breaking Change)
+### Added
+- (78fa246, a8f2de0) Comprehensive JSON output format for DNS performance metrics
+- (a8f2de0) Structured latency data with minimum, average, and maximum values
+- (a8f2de0) DNSPerf metrics section with queries sent/completed/lost, QPS, runtime, and success rate
+- (a8f2de0) Test configuration section with DNS server, host counts, and target QPS
+- (a8f2de0) ISO 8601 timestamp for each test run
+- (a8f2de0) Error handling with JSON error responses when DNS tests fail
+- (e166ca4) Example Home Assistant REST sensor configurations (`examples/homeassistant_templates.yaml`)
+- (c7670fa) Example nginx configuration for HTTP API endpoint (`examples/nginx-dnsperf-api.conf`)
+
+### Changed
+- (78fa246, a8f2de0) **BREAKING:** Output format changed from single latency value to comprehensive JSON structure
+- (a8f2de0) **BREAKING:** History file now stores JSON data instead of simple latency values
+- (a8f2de0) **BREAKING:** `latest_result.txt` now contains JSON instead of plain text
+- (a8f2de0) Enhanced logging to display all latency metrics (min/avg/max) and success rates
+- (a8f2de0) Improved error handling with structured JSON error responses
+- (e166ca4, c7670fa) Moved integration examples to dedicated `examples/` directory
+
+### Fixed
+- (a8f2de0) More robust parsing of dnsperf output using only native dnsperf metrics
+- (a8f2de0) Better handling of missing or malformed dnsperf output
+- (a8f2de0) Improved regex patterns for extracting min/max latency values
+
+### Docs
+- (e166ca4) Added comprehensive Home Assistant integration examples
+- (c7670fa) Added nginx configuration example for HTTP API exposure
+- (e166ca4, c7670fa) Updated documentation structure with examples directory
+
+_Notes:_ **Major version bump (1.0.0) due to breaking changes in output format.** The daemon now outputs structured JSON data instead of simple latency values. This enables richer integration with monitoring systems like Home Assistant, Grafana, and others. Users upgrading from previous versions will need to update any scripts or systems that consume the daemon's output to handle the new JSON format.
+
+**Migration Guide:**
+- Old format: `45.2` (single latency value)
+- New format: `{"latency": {"average": 45.2, "minimum": 12.3, "maximum": 89.1}, ...}` (comprehensive JSON)
+- Update consuming applications to parse JSON and extract `value_json.latency.average` for backward compatibility
+- History files from previous versions are incompatible and should be archived/cleared
 
 ---
 ## [0.4.0] - 2025-01-22 (History Storage Feature)
