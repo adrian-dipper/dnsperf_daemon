@@ -16,6 +16,27 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - Optional multi-metric export (min / max / p95 latency)
 
 ---
+## [0.4.0] - 2025-01-22 (History Storage Feature)
+### Added
+- (f9044b5) DNS performance history storage with configurable retention
+- (f9044b5) New configuration parameter `HISTORY_RETENTION_DAYS` (default: 30 days)
+- (f9044b5) Automatic cleanup of old history entries based on retention policy
+- (f9044b5) History file `dns_perf_history.txt` with CSV format (timestamp,latency_ms)
+- (f9044b5) Cross-platform date handling (GNU/Linux and BSD/macOS compatible)
+
+### Changed
+- (f9044b5) DNS test results now stored in both latest result file and historical log
+- (f9044b5) Configuration reload (SIGHUP) now includes history retention parameter
+- (f9044b5) Enhanced logging to include history management operations
+
+### Fixed
+- (f9044b5) Corrected shell script structure issues with local variables outside functions
+- (f9044b5) Fixed broken if-else blocks in `run_dns_test()` function
+- (f9044b5) Improved error handling in history management functions
+
+_Notes:_ Minor version bump for new feature addition. Backward compatible enhancement that adds persistent storage of DNS performance metrics over time without changing existing behavior.
+
+---
 ## [0.3.3] - 2025-09-22 (Docs & CI Enhancements)
 ### Added
 - (88e0a6b) feat: add changelog validation and contribution guidelines (CI workflow, contribution sections, enforcement script)
