@@ -38,6 +38,7 @@ declare TEMP_FILE="$DAEMON_WORKDIR/top_domains.txt"
 declare DNSPERF_FILE="$DAEMON_WORKDIR/dns_perf.txt"
 declare DNSPERF_FILE_SORTED="$DAEMON_WORKDIR/dns_perf_sorted.txt"
 declare LATEST_RESULT_FILE="$DAEMON_WORKDIR/latest_result.txt"
+declare HISTORY_FILE="$DAEMON_WORKDIR/dns_perf_history.txt"
 
 # Current date
 declare current_day=""
@@ -276,7 +277,73 @@ interruptible_sleep() {
     return 0
 }
 
-# === Update HOSTS daily with Top 100 domains ===
+# === History management functions ===
+# Add result to history with timestamp
+add_to_history() {
+    local result="$1"
+    local timestamp
+    timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    
+    # Format: YYYY-MM-DD HH:MM:SS,latency_ms
+    echo "${timestamp},${result}" >> "$HISTORY_FILE"
+}
+
+# Clean old entries from history based on retention days
+cleanup_history() {
+    if [ ! -f "$HISTORY_FILE" ]; then
+        return 0
+    fi
+    
+    # Calculate cutoff date (HISTORY_RETENTION_DAYS ago)
+    local cutoff_date
+    if command -v date >/dev/null 2>&1; then
+        # Linux/GNU date
+        if date --version 2>/dev/null | grep -q "GNU"; then
+            cutoff_date=$(date -d "${HISTORY_RETENTION_DAYS} days ago" "+%Y-%m-%d")
+        else
+            # BSD/macOS date
+            cutoff_date=$(date -v-${HISTORY_RETENTION_DAYS}d "+%Y-%m-%d")
+        fi
+    else
+        log "Warning: date command not available, skipping history cleanup"
+        return 1
+    fi
+    
+    # Create temporary file for cleaned history
+    local temp_history="${HISTORY_FILE}.tmp"
+    
+    # Keep entries newer than cutoff date
+    local kept_entries=0
+    local removed_entries=0
+    
+    if [ -f "$HISTORY_FILE" ]; then
+        while IFS=',' read -r timestamp_part latency; do
+            # Extract date part from timestamp (YYYY-MM-DD)
+            local entry_date="${timestamp_part%% *}"
+            
+            # Compare dates (string comparison works for YYYY-MM-DD format)
+            if [[ "$entry_date" > "$cutoff_date" ]] || [[ "$entry_date" == "$cutoff_date" ]]; then
+                echo "${timestamp_part},${latency}" >> "$temp_history"
+                kept_entries=$((kept_entries + 1))
+            else
+                removed_entries=$((removed_entries + 1))
+            fi
+        done < "$HISTORY_FILE"
+        
+        # Replace original file with cleaned version
+        if [ -f "$temp_history" ]; then
+            mv "$temp_history" "$HISTORY_FILE"
+            if [ $removed_entries -gt 0 ]; then
+                log "History cleanup: removed $removed_entries entries older than $cutoff_date, kept $kept_entries entries"
+            fi
+        fi
+    fi
+    
+    # Clean up temp file if it exists
+    rm -f "$temp_history"
+}
+
+# === Update HOSTS daily with Top n domains ===
 update_hosts() {
     local current_day
     current_day=$(date +%F)
@@ -346,6 +413,12 @@ run_dns_test() {
         # Store only the latest result (value only, no timestamp)
         echo "$result" > "$LATEST_RESULT_FILE"
         log "DNS test completed - Average Latency: ${result}ms"
+        
+        # Add result to history
+        add_to_history "$result"
+        
+        # Cleanup old history entries
+        cleanup_history
     else
         log "DNS test failed or returned no results"
     fi
