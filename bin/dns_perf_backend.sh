@@ -394,6 +394,10 @@ update_hosts() {
 # DNS Performance test function
 run_dns_test() {
     log "Starting DNS performance test with ${#HOSTS[@]} domains"
+    
+    # Record start time for timestamp only
+    local test_start_iso
+    test_start_iso=$(date -u "+%Y-%m-%dT%H:%M:%SZ")
 
     # Generate DNS test file
     echo "" >"$DNSPERF_FILE"
@@ -404,40 +408,98 @@ run_dns_test() {
 
     # Sort and remove duplicates
     sort "$DNSPERF_FILE" | uniq >"$DNSPERF_FILE_SORTED"
+    
+    # Count actual queries in the file for reference
+    local total_queries
+    total_queries=$(wc -l < "$DNSPERF_FILE_SORTED")
 
-    # Run DNS performance test and capture full latency line
-    local latency_line
-    latency_line=$(dnsperf -W -q "$QUERIES_PER_SECOND" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" 2>/dev/null | grep "Average Latency")
-
-    if [ -n "$latency_line" ]; then
-        # Parse latency values from the output
-        # Expected format: "Average Latency: 45.2 ms (min 12.3, max 89.1)"
+    # Run DNS performance test and capture full output
+    local dnsperf_output
+    dnsperf_output=$(dnsperf -W -q "$QUERIES_PER_SECOND" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" 2>/dev/null)
+    
+    if [ -n "$dnsperf_output" ]; then
+        # Extract metrics directly from dnsperf output
         local avg_latency min_latency max_latency
+        local queries_sent queries_completed queries_per_sec
+        local runtime_sec lost_queries
         
-        # Extract average latency (field 7 when split by spaces)
-        avg_latency=$(echo "$latency_line" | awk '{print $7}')
+        # Parse latency line: "Average Latency: 45.2 ms (min 12.3, max 89.1)"
+        local latency_line
+        latency_line=$(echo "$dnsperf_output" | grep "Average Latency")
         
-        # Extract min and max values using regex
-        if [[ "$latency_line" =~ min[[:space:]]+([0-9]+\.[0-9]+) ]]; then
-            min_latency="${BASH_REMATCH[1]}"
+        if [ -n "$latency_line" ]; then
+            # Extract average latency
+            avg_latency=$(echo "$latency_line" | awk '{print $7}')
+            
+            # Extract min and max values using regex
+            if [[ "$latency_line" =~ min[[:space:]]+([0-9]+\.[0-9]+) ]]; then
+                min_latency="${BASH_REMATCH[1]}"
+            else
+                min_latency="0.0"
+            fi
+            
+            if [[ "$latency_line" =~ max[[:space:]]+([0-9]+\.[0-9]+) ]]; then
+                max_latency="${BASH_REMATCH[1]}"
+            else
+                max_latency="0.0"
+            fi
         else
-            min_latency="0.0"
-        fi
-        
-        if [[ "$latency_line" =~ max[[:space:]]+([0-9]+\.[0-9]+) ]]; then
-            max_latency="${BASH_REMATCH[1]}"
-        else
+            avg_latency="0.0"
+            min_latency="0.0" 
             max_latency="0.0"
         fi
         
-        # Create JSON result
+        # Extract other metrics from dnsperf output
+        queries_sent=$(echo "$dnsperf_output" | grep "Queries sent:" | awk '{print $3}' | sed 's/,//g')
+        queries_completed=$(echo "$dnsperf_output" | grep "Queries completed:" | awk '{print $3}' | sed 's/,//g')
+        queries_per_sec=$(echo "$dnsperf_output" | grep "Queries per second:" | awk '{print $4}')
+        runtime_sec=$(echo "$dnsperf_output" | grep "Run time" | awk '{print $3}')
+        lost_queries=$(echo "$dnsperf_output" | grep "Queries lost:" | awk '{print $3}' | sed 's/,//g')
+        
+        # Calculate success rate from dnsperf data
+        local success_rate
+        if [ -n "$queries_sent" ] && [ "$queries_sent" -gt 0 ]; then
+            success_rate=$(awk "BEGIN {printf \"%.2f\", ($queries_completed / $queries_sent) * 100}")
+        else
+            success_rate="0.00"
+        fi
+        
+        # Create JSON result using only dnsperf output
         local json_result
-        json_result=$(printf '{"average": %s, "minimum": %s, "maximum": %s}' "$avg_latency" "$min_latency" "$max_latency")
+        json_result=$(cat <<EOF
+{
+  "timestamp": "$test_start_iso",
+  "latency": {
+    "average": ${avg_latency:-0.0},
+    "minimum": ${min_latency:-0.0},
+    "maximum": ${max_latency:-0.0}
+  },
+  "dnsperf_metrics": {
+    "queries_sent": ${queries_sent:-0},
+    "queries_completed": ${queries_completed:-0},
+    "queries_lost": ${lost_queries:-0},
+    "queries_per_second": ${queries_per_sec:-0.0},
+    "runtime_seconds": ${runtime_sec:-0.0},
+    "success_rate_percent": $success_rate
+  },
+  "test_config": {
+    "dns_server": "$DNS_SERVER",
+    "total_hosts": ${#HOSTS[@]},
+    "static_hosts": ${#STATIC_HOSTS[@]},
+    "dynamic_hosts": ${#DAILY_HOSTS[@]},
+    "total_queries_generated": $total_queries,
+    "queries_per_second_target": $QUERIES_PER_SECOND
+  }
+}
+EOF
+)
         
         # Store the JSON result in the latest result file
         echo "$json_result" > "$LATEST_RESULT_FILE"
         
-        log "DNS test completed - Average: ${avg_latency}ms, Min: ${min_latency}ms, Max: ${max_latency}ms"
+        log "DNS test completed - Runtime: ${runtime_sec:-N/A}s, QPS: ${queries_per_sec:-N/A}"
+        log "Latency - Average: ${avg_latency:-N/A}ms, Min: ${min_latency:-N/A}ms, Max: ${max_latency:-N/A}ms"
+        log "Success rate: ${success_rate}% (${queries_completed:-0}/${queries_sent:-0} queries)"
 
         # Add result to history
         add_to_history "$json_result"
@@ -446,6 +508,40 @@ run_dns_test() {
         cleanup_history
     else
         log "DNS test failed or returned no results"
+        
+        # Create error JSON result
+        local error_json_result
+        error_json_result=$(cat <<EOF
+{
+  "timestamp": "$test_start_iso",
+  "error": true,
+  "latency": {
+    "average": 0.0,
+    "minimum": 0.0,
+    "maximum": 0.0
+  },
+  "dnsperf_metrics": {
+    "queries_sent": 0,
+    "queries_completed": 0,
+    "queries_lost": 0,
+    "queries_per_second": 0.0,
+    "runtime_seconds": 0.0,
+    "success_rate_percent": 0.0
+  },
+  "test_config": {
+    "dns_server": "$DNS_SERVER",
+    "total_hosts": ${#HOSTS[@]},
+    "static_hosts": ${#STATIC_HOSTS[@]},
+    "dynamic_hosts": ${#DAILY_HOSTS[@]},
+    "total_queries_generated": $total_queries,
+    "queries_per_second_target": $QUERIES_PER_SECOND
+  }
+}
+EOF
+)
+        
+        echo "$error_json_result" > "$LATEST_RESULT_FILE"
+        add_to_history "$error_json_result"
     fi
 }
 
