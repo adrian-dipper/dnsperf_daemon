@@ -1,0 +1,274 @@
+# Home Assistant REST Sensor Configuration Examples
+# for DNS Performance Daemon JSON Output
+#
+# EXAMPLE CONFIGURATION for integrating the DNS Performance Daemon with Home Assistant
+#
+# This file demonstrates how to create REST sensors in Home Assistant to consume
+# the JSON data produced by the DNS performance daemon.
+#
+# Prerequisites:
+# 1. DNS Performance Daemon must be running and producing JSON output
+# 2. JSON data must be accessible via HTTP (see nginx-dnsperf-api.conf example)
+# 3. Replace "http://your-server/api/dns-latency" with your actual endpoint URL
+#
+# Usage:
+# - Copy the sensor configurations you need to your Home Assistant configuration.yaml
+# - Modify the resource URLs to match your setup
+# - Adjust scan_interval, names, and other parameters as needed
+# - Restart Home Assistant after adding the configuration
+#
+# The examples below show how to extract all available metrics from the JSON structure
+# created by the DNS performance daemon script.
+
+sensor:
+  # === Latency Sensors ===
+  - platform: rest
+    name: "DNS Latency Average"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.latency.average }}"
+    unit_of_measurement: "ms"
+    device_class: duration
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:dns
+    
+  - platform: rest
+    name: "DNS Latency Minimum" 
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.latency.minimum }}"
+    unit_of_measurement: "ms"
+    device_class: duration
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:dns
+    
+  - platform: rest
+    name: "DNS Latency Maximum"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.latency.maximum }}"
+    unit_of_measurement: "ms"
+    device_class: duration
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:dns
+
+  # === DNSPerf Performance Metrics ===
+  - platform: rest
+    name: "DNS Queries Sent"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.dnsperf_metrics.queries_sent }}"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:send
+    
+  - platform: rest
+    name: "DNS Queries Completed"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.dnsperf_metrics.queries_completed }}"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:check-circle
+    
+  - platform: rest
+    name: "DNS Queries Lost"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.dnsperf_metrics.queries_lost }}"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:alert-circle
+    
+  - platform: rest
+    name: "DNS Queries Per Second"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.dnsperf_metrics.queries_per_second }}"
+    unit_of_measurement: "qps"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:speedometer
+    
+  - platform: rest
+    name: "DNS Test Runtime"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.dnsperf_metrics.runtime_seconds }}"
+    unit_of_measurement: "s"
+    device_class: duration
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:timer
+    
+  - platform: rest
+    name: "DNS Success Rate"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.dnsperf_metrics.success_rate_percent }}"
+    unit_of_measurement: "%"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:percent
+
+  # === Test Configuration Information ===
+  - platform: rest
+    name: "DNS Server Used"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.test_config.dns_server }}"
+    scan_interval: 30
+    icon: mdi:server-network
+    
+  - platform: rest
+    name: "DNS Total Hosts Tested"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.test_config.total_hosts }}"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:counter
+    
+  - platform: rest
+    name: "DNS Static Hosts"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.test_config.static_hosts }}"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:home-network
+    
+  - platform: rest
+    name: "DNS Dynamic Hosts"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.test_config.dynamic_hosts }}"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:web
+    
+  - platform: rest
+    name: "DNS Total Queries Generated"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.test_config.total_queries_generated }}"
+    state_class: measurement
+    scan_interval: 30
+    icon: mdi:format-list-numbered
+    
+  - platform: rest
+    name: "DNS Target QPS"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.test_config.queries_per_second_target }}"
+    unit_of_measurement: "qps"
+    scan_interval: 30
+    icon: mdi:target
+
+  # === Timestamp Sensor ===
+  - platform: rest
+    name: "DNS Test Timestamp"
+    resource: http://your-server/api/dns-latency
+    value_template: "{{ value_json.timestamp }}"
+    device_class: timestamp
+    scan_interval: 30
+    icon: mdi:clock
+
+  # === Error Status Sensor (Optional) ===
+  - platform: rest
+    name: "DNS Test Status"
+    resource: http://your-server/api/dns-latency
+    value_template: >
+      {% if value_json.error is defined and value_json.error %}
+        Error
+      {% else %}
+        OK
+      {% endif %}
+    scan_interval: 30
+    icon: >
+      {% if states('sensor.dns_test_status') == 'Error' %}
+        mdi:alert
+      {% else %}
+        mdi:check
+      {% endif %}
+
+# === Template Sensors for Calculated Values (Optional) ===
+template:
+  - sensor:
+      # Calculate packet loss percentage
+      - name: "DNS Packet Loss Percentage"
+        state: >
+          {% set sent = states('sensor.dns_queries_sent') | int(0) %}
+          {% set lost = states('sensor.dns_queries_lost') | int(0) %}
+          {% if sent > 0 %}
+            {{ ((lost / sent) * 100) | round(2) }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "%"
+        icon: mdi:packet-loss
+
+      # Calculate efficiency (queries completed vs. generated)
+      - name: "DNS Test Efficiency"
+        state: >
+          {% set generated = states('sensor.dns_total_queries_generated') | int(0) %}
+          {% set completed = states('sensor.dns_queries_completed') | int(0) %}
+          {% if generated > 0 %}
+            {{ ((completed / generated) * 100) | round(2) }}
+          {% else %}
+            0
+          {% endif %}
+        unit_of_measurement: "%"
+        icon: mdi:chart-line
+
+      # Format timestamp as human readable
+      - name: "DNS Last Test Time"
+        state: >
+          {% set ts = states('sensor.dns_test_timestamp') %}
+          {% if ts not in ['unknown', 'unavailable'] %}
+            {{ as_timestamp(ts) | timestamp_local }}
+          {% else %}
+            Never
+          {% endif %}
+        icon: mdi:clock-outline
+
+# === Example Automation ===
+automation:
+  - alias: "DNS Performance Alert"
+    description: "Alert when DNS latency is high or success rate is low"
+    trigger:
+      - platform: state
+        entity_id: sensor.dns_latency_average
+      - platform: state
+        entity_id: sensor.dns_success_rate
+    condition:
+      - condition: or
+        conditions:
+          - condition: numeric_state
+            entity_id: sensor.dns_latency_average
+            above: 100  # Alert if average latency > 100ms
+          - condition: numeric_state
+            entity_id: sensor.dns_success_rate
+            below: 95   # Alert if success rate < 95%
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "DNS Performance Issue"
+          message: >
+            DNS performance issue detected:
+            Average Latency: {{ states('sensor.dns_latency_average') }}ms
+            Success Rate: {{ states('sensor.dns_success_rate') }}%
+            DNS Server: {{ states('sensor.dns_server_used') }}
+
+# === Example Dashboard Card ===
+# Add this to your Lovelace dashboard:
+#
+# type: entities
+# title: DNS Performance Monitor
+# entities:
+#   - entity: sensor.dns_latency_average
+#     name: "Average Latency"
+#   - entity: sensor.dns_latency_minimum
+#     name: "Min Latency"
+#   - entity: sensor.dns_latency_maximum
+#     name: "Max Latency"
+#   - entity: sensor.dns_success_rate
+#     name: "Success Rate"
+#   - entity: sensor.dns_queries_per_second
+#     name: "Queries/sec"
+#   - entity: sensor.dns_test_runtime
+#     name: "Test Duration"
+#   - entity: sensor.dns_total_hosts_tested
+#     name: "Hosts Tested"
+#   - entity: sensor.dns_server_used
+#     name: "DNS Server"
+#   - entity: sensor.dns_last_test_time
+#     name: "Last Test"
