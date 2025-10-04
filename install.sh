@@ -63,10 +63,14 @@ if ! command -v unzip >/dev/null 2>&1; then
     MISSING_DEPS="$MISSING_DEPS unzip"
 fi
 
+if ! command -v shuf >/dev/null 2>&1; then
+    MISSING_DEPS="$MISSING_DEPS shuf(coreutils)"
+fi
+
 if [ -n "$MISSING_DEPS" ]; then
     echo "Error: Missing dependencies:$MISSING_DEPS"
     echo "Please install them first. For example:"
-    echo "  emerge -av net-dns/bind-tools net-misc/wget app-arch/unzip"
+    echo "  emerge -av net-dns/bind-tools net-misc/wget app-arch/unzip sys-apps/coreutils"
     echo "  Note: dnsperf might need to be compiled from source"
     exit 1
 fi
@@ -158,9 +162,120 @@ if [ ! -f "$CONFIG_DIR/dnsperf_daemon.conf" ] || [ "$EXISTING_INSTALLATION" = fa
     chown root:root "$CONFIG_DIR/dnsperf_daemon.conf"
     echo "  Configuration installed: $CONFIG_DIR/dnsperf_daemon.conf"
 else
-    # Configuration file exists - ask user what to do
+    # Configuration file exists - check if new parameters need to be added
     echo "  Configuration file already exists: $CONFIG_DIR/dnsperf_daemon.conf"
-    echo "  Do you want to reset it to default settings? (y/N)"
+
+    # Define all required parameters with their default values
+    declare -A REQUIRED_PARAMS=(
+        ["SLEEP_INTERVAL"]="30  # 30 seconds between tests"
+        ["DNS_SERVER"]="\"1.1.1.1\" # Cloudflare DNS server as default"
+        ["QUERIES_PER_SECOND"]="20 # Number of queries per second dnsperf will wait for"
+        ["URL"]="\"http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip\""
+        ["DOMAIN_COUNT"]="1000  # Number of domains to extract from the list"
+        ["RANDOM_SAMPLE_SIZE"]="100  # Number of domains to randomly sample from daily_hosts for testing (0 = use all)"
+    )
+
+    # Define preferred insertion positions (try to insert after these lines if they exist)
+    # Otherwise append to appropriate section or end of file
+    declare -A PREFERRED_AFTER=(
+        ["SLEEP_INTERVAL"]="# DNS Performance configuration"
+        ["DNS_SERVER"]="SLEEP_INTERVAL="
+        ["QUERIES_PER_SECOND"]="DNS_SERVER="
+        ["URL"]="# Domain list configuration"
+        ["DOMAIN_COUNT"]="URL="
+        ["RANDOM_SAMPLE_SIZE"]="DOMAIN_COUNT="
+    )
+
+    # Define fallback section markers
+    declare -A SECTION_MARKER=(
+        ["SLEEP_INTERVAL"]="# DNS Performance configuration"
+        ["DNS_SERVER"]="# DNS Performance configuration"
+        ["QUERIES_PER_SECOND"]="# DNS Performance configuration"
+        ["URL"]="# Domain list configuration"
+        ["DOMAIN_COUNT"]="# Domain list configuration"
+        ["RANDOM_SAMPLE_SIZE"]="# Domain list configuration"
+    )
+
+    PARAMS_ADDED=false
+    BACKUP_CREATED=false
+
+    # Check each parameter
+    for param in SLEEP_INTERVAL DNS_SERVER QUERIES_PER_SECOND URL DOMAIN_COUNT RANDOM_SAMPLE_SIZE; do
+        if ! grep -q "^${param}=" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+            # Create backup before first modification
+            if [ "$BACKUP_CREATED" = false ]; then
+                cp "$CONFIG_DIR/dnsperf_daemon.conf" "$CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+                echo "  Backup created: $CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+                BACKUP_CREATED=true
+            fi
+
+            echo "  Adding missing parameter: ${param}"
+
+            # Get the preferred line to insert after
+            PREFERRED_LINE="${PREFERRED_AFTER[$param]}"
+            NEW_VALUE="${REQUIRED_PARAMS[$param]}"
+            INSERTED=false
+
+            # Try to insert after the preferred line if it exists
+            if grep -q "^${PREFERRED_LINE}" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+                sed -i "/^${PREFERRED_LINE}/a ${param}=${NEW_VALUE}" "$CONFIG_DIR/dnsperf_daemon.conf"
+                INSERTED=true
+            else
+                # Fallback: try to insert after the section marker
+                SECTION="${SECTION_MARKER[$param]}"
+                if grep -q "^${SECTION}" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+                    sed -i "/^${SECTION}/a ${param}=${NEW_VALUE}" "$CONFIG_DIR/dnsperf_daemon.conf"
+                    INSERTED=true
+                else
+                    # Last resort: append before STATIC_HOSTS or at the end
+                    if grep -q "^# Static host list" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+                        sed -i "/^# Static host list/i ${param}=${NEW_VALUE}\n" "$CONFIG_DIR/dnsperf_daemon.conf"
+                    else
+                        echo "${param}=${NEW_VALUE}" >> "$CONFIG_DIR/dnsperf_daemon.conf"
+                    fi
+                    INSERTED=true
+                fi
+            fi
+
+            PARAMS_ADDED=true
+        fi
+    done
+
+    # Check if STATIC_HOSTS array exists
+    if ! grep -q "^STATIC_HOSTS=(" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+        if [ "$BACKUP_CREATED" = false ]; then
+            cp "$CONFIG_DIR/dnsperf_daemon.conf" "$CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+            echo "  Backup created: $CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+            BACKUP_CREATED=true
+        fi
+
+        echo "  Adding missing STATIC_HOSTS array..."
+        cat >> "$CONFIG_DIR/dnsperf_daemon.conf" << 'EOF'
+
+# Static host list - one per line (add/remove as needed)
+STATIC_HOSTS=(
+"google.de"
+"zeit.de"
+"spiegel.de"
+"youtube.com"
+"google.com"
+"heise.de"
+"golem.de"
+"wetter.de"
+"weather.com"
+)
+EOF
+        PARAMS_ADDED=true
+    fi
+
+    if [ "$PARAMS_ADDED" = true ]; then
+        echo "  Configuration updated with missing parameters"
+    else
+        echo "  Configuration already up-to-date with all parameters"
+    fi
+
+    # Offer to reset to defaults if user wants
+    echo "  Do you want to reset configuration to default settings? (y/N)"
     read -r response
 
     case "$response" in
@@ -176,8 +291,7 @@ else
             echo "  Configuration reset to defaults: $CONFIG_DIR/dnsperf_daemon.conf"
             ;;
         *)
-            echo "  Keeping existing configuration unchanged"
-            echo "  New template available at: $PROJECT_ROOT/config/dnsperf_daemon.conf"
+            echo "  Keeping existing configuration with user-defined values"
             ;;
     esac
 fi

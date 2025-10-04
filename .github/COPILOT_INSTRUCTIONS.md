@@ -1,5 +1,12 @@
 # Copilot Instructions: Conventional Commit Messages
 
+## CRITICAL: NO AUTOMATIC COMMITS
+**NEVER** create commits, stage files, or run `git commit` commands unless the user explicitly asks you to commit.
+- When making file changes, ONLY edit the files — do not automatically commit them.
+- After completing requested changes, inform the user that files have been modified and await their explicit instruction to commit.
+- If the user asks you to "commit" or "create a commit", only then proceed with staging and committing.
+- Exception: If the user says phrases like "commit this" or "make a commit with message X", then you may proceed.
+
 Copilot, when suggesting commit messages, adhere strictly to the Conventional Commits style:
 
 Format:
@@ -71,6 +78,11 @@ If Copilot proposes a commit touching only one README, suggest also generating t
 ### Changelog Update Policy (Use git log)
 When assisting with CHANGELOG updates, ALWAYS derive entries from the actual Git history — never invent hashes or reorder commits arbitrarily.
 
+**IMPORTANT: Always use specific version numbers — NEVER use `[Unreleased]` section headers.**
+- Every changelog entry must have a concrete version number (e.g. `[0.3.4]`, `[1.0.0]`).
+- If the next version number is not yet known, ask the user what version number to use.
+- Do not create or maintain an `[Unreleased]` section at the top of the changelog.
+
 Required procedure:
 1. Identify last released version header in `CHANGELOG.md` (e.g. `## [0.3.3]`); if none, treat all commits as initial release.
 2. Collect new commits since that version using one of:
@@ -86,7 +98,7 @@ Required procedure:
    ### Added / Changed / Fixed / Docs / Security / Removed (only if entries exist)
    - (abc1234) subject line...
    ```
-6. If the release is not yet tagged: optionally annotate with `(unreleased)` in the heading or leave under `[Unreleased]`.
+6. **ALWAYS use a specific version number (X.Y.Z).** Never use `[Unreleased]` or `(unreleased)` annotations.
 7. Do NOT duplicate a commit already listed; skip merges unless they carry unique semantic changes.
 8. Keep line wrapping consistent; avoid trailing spaces.
 9. Preserve existing explanatory _Notes:_ block style.

@@ -6,14 +6,37 @@ This file has been reconstructed from the actual Git commit history (no Git tags
 
 Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed / Security.
 
-## [Unreleased]
-### Planned / Ideas
+---
+## Planned / Ideas
 - Optional Prometheus exporter (HTTP metrics endpoint)
 - Systemd unit / portable service variant
 - Config validation command (`dns_perf_backend.sh --check-config`)
 - Container image / minimal Alpine build
 - Structured JSON log mode (toggle)
 - Optional multi-metric export (min / max / p95 latency)
+
+---
+## [0.5.0] - 2025-10-05 (Random Domain Sampling)
+### Added
+- (419f591) Random sampling of daily hosts for variable test coverage
+  - New `RANDOM_SAMPLE_SIZE` configuration parameter (default: 100)
+  - Time-based seed (nanosecond precision) ensures unique sample selection per run
+  - Load `DOMAIN_COUNT` domains, then randomly select `RANDOM_SAMPLE_SIZE` for testing
+  - Setting to 0 uses all loaded domains (backward compatible)
+- (db2fb1d) `shuf` dependency check added to installation script
+- (6932b88, 020b556, c0ce88f) Smart configuration parameter migration in install script
+  - Automatically detects and adds missing parameters to existing config files
+  - Three-tier fallback strategy for parameter insertion (preferred position → section marker → end of file)
+  - Order-independent parameter detection and insertion
+  - Creates backup before modifying existing configuration
+  - Works regardless of which parameters are present or missing
+
+### Docs
+- (b1e1c59) Documented `RANDOM_SAMPLE_SIZE` parameter in both README files (German and English)
+- (b1e1c59) Added random sampling to features list
+- (b1e1c59) Updated configuration examples with new parameter
+
+_Notes:_ This release adds domain sampling capabilities while maintaining full backward compatibility. Existing installations will continue to work unchanged; the new parameter is optional.
 
 ---
 ## [0.4.0] - 2025-01-22 (History Storage Feature)
