@@ -165,17 +165,80 @@ else
     # Configuration file exists - check if new parameters need to be added
     echo "  Configuration file already exists: $CONFIG_DIR/dnsperf_daemon.conf"
 
-    # Check if RANDOM_SAMPLE_SIZE parameter exists
-    if ! grep -q "^RANDOM_SAMPLE_SIZE=" "$CONFIG_DIR/dnsperf_daemon.conf"; then
-        echo "  Adding new parameter RANDOM_SAMPLE_SIZE to existing configuration..."
+    # Define all required parameters with their default values and positions
+    declare -A REQUIRED_PARAMS=(
+        ["SLEEP_INTERVAL"]="30  # 30 seconds between tests"
+        ["DNS_SERVER"]="\"1.1.1.1\" # Cloudflare DNS server as default"
+        ["QUERIES_PER_SECOND"]="20 # Number of queries per second dnsperf will wait for"
+        ["URL"]="\"http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip\""
+        ["DOMAIN_COUNT"]="1000  # Number of domains to extract from the list"
+        ["RANDOM_SAMPLE_SIZE"]="100  # Number of domains to randomly sample from daily_hosts for testing (0 = use all)"
+    )
 
-        # Create backup before modifying
-        cp "$CONFIG_DIR/dnsperf_daemon.conf" "$CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
-        echo "  Backup created: $CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+    # Define insertion order and position markers
+    declare -A INSERT_AFTER=(
+        ["SLEEP_INTERVAL"]="# DNS Performance configuration"
+        ["DNS_SERVER"]="SLEEP_INTERVAL="
+        ["QUERIES_PER_SECOND"]="DNS_SERVER="
+        ["URL"]="# Domain list configuration"
+        ["DOMAIN_COUNT"]="URL="
+        ["RANDOM_SAMPLE_SIZE"]="DOMAIN_COUNT="
+    )
 
-        # Add the new parameter after DOMAIN_COUNT line
-        sed -i '/^DOMAIN_COUNT=/a RANDOM_SAMPLE_SIZE=100  # Number of domains to randomly sample from daily_hosts for testing (0 = use all)' "$CONFIG_DIR/dnsperf_daemon.conf"
-        echo "  Added RANDOM_SAMPLE_SIZE parameter (default: 100)"
+    PARAMS_ADDED=false
+    BACKUP_CREATED=false
+
+    # Check each parameter
+    for param in SLEEP_INTERVAL DNS_SERVER QUERIES_PER_SECOND URL DOMAIN_COUNT RANDOM_SAMPLE_SIZE; do
+        if ! grep -q "^${param}=" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+            # Create backup before first modification
+            if [ "$BACKUP_CREATED" = false ]; then
+                cp "$CONFIG_DIR/dnsperf_daemon.conf" "$CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+                echo "  Backup created: $CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+                BACKUP_CREATED=true
+            fi
+
+            echo "  Adding missing parameter: ${param}"
+
+            # Get the line to insert after
+            AFTER_LINE="${INSERT_AFTER[$param]}"
+            NEW_VALUE="${REQUIRED_PARAMS[$param]}"
+
+            # Insert the parameter after the specified line
+            sed -i "/^${AFTER_LINE}/a ${param}=${NEW_VALUE}" "$CONFIG_DIR/dnsperf_daemon.conf"
+            PARAMS_ADDED=true
+        fi
+    done
+
+    # Check if STATIC_HOSTS array exists
+    if ! grep -q "^STATIC_HOSTS=(" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+        if [ "$BACKUP_CREATED" = false ]; then
+            cp "$CONFIG_DIR/dnsperf_daemon.conf" "$CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+            echo "  Backup created: $CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+            BACKUP_CREATED=true
+        fi
+
+        echo "  Adding missing STATIC_HOSTS array..."
+        cat >> "$CONFIG_DIR/dnsperf_daemon.conf" << 'EOF'
+
+# Static host list - one per line (add/remove as needed)
+STATIC_HOSTS=(
+"google.de"
+"zeit.de"
+"spiegel.de"
+"youtube.com"
+"google.com"
+"heise.de"
+"golem.de"
+"wetter.de"
+"weather.com"
+)
+EOF
+        PARAMS_ADDED=true
+    fi
+
+    if [ "$PARAMS_ADDED" = true ]; then
+        echo "  Configuration updated with missing parameters"
     else
         echo "  Configuration already up-to-date with all parameters"
     fi
