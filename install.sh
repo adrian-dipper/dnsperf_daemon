@@ -162,9 +162,26 @@ if [ ! -f "$CONFIG_DIR/dnsperf_daemon.conf" ] || [ "$EXISTING_INSTALLATION" = fa
     chown root:root "$CONFIG_DIR/dnsperf_daemon.conf"
     echo "  Configuration installed: $CONFIG_DIR/dnsperf_daemon.conf"
 else
-    # Configuration file exists - ask user what to do
+    # Configuration file exists - check if new parameters need to be added
     echo "  Configuration file already exists: $CONFIG_DIR/dnsperf_daemon.conf"
-    echo "  Do you want to reset it to default settings? (y/N)"
+
+    # Check if RANDOM_SAMPLE_SIZE parameter exists
+    if ! grep -q "^RANDOM_SAMPLE_SIZE=" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+        echo "  Adding new parameter RANDOM_SAMPLE_SIZE to existing configuration..."
+
+        # Create backup before modifying
+        cp "$CONFIG_DIR/dnsperf_daemon.conf" "$CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+        echo "  Backup created: $CONFIG_DIR/dnsperf_daemon.conf.backup.$(date +%Y%m%d_%H%M%S)"
+
+        # Add the new parameter after DOMAIN_COUNT line
+        sed -i '/^DOMAIN_COUNT=/a RANDOM_SAMPLE_SIZE=100  # Number of domains to randomly sample from daily_hosts for testing (0 = use all)' "$CONFIG_DIR/dnsperf_daemon.conf"
+        echo "  Added RANDOM_SAMPLE_SIZE parameter (default: 100)"
+    else
+        echo "  Configuration already up-to-date with all parameters"
+    fi
+
+    # Offer to reset to defaults if user wants
+    echo "  Do you want to reset configuration to default settings? (y/N)"
     read -r response
 
     case "$response" in
@@ -180,8 +197,7 @@ else
             echo "  Configuration reset to defaults: $CONFIG_DIR/dnsperf_daemon.conf"
             ;;
         *)
-            echo "  Keeping existing configuration unchanged"
-            echo "  New template available at: $PROJECT_ROOT/config/dnsperf_daemon.conf"
+            echo "  Keeping existing configuration with user-defined values"
             ;;
     esac
 fi
