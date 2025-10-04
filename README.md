@@ -115,6 +115,10 @@ QUERIES_PER_SECOND=20
 URL="http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip"
 DOMAIN_COUNT=1000
 
+# Zufällige Stichprobengröße aus den täglich geladenen Domains
+# (0 = alle verwenden, >0 = zufällige Auswahl mit eindeutigem Seed pro Lauf)
+RANDOM_SAMPLE_SIZE=100
+
 # Statische Domains (werden vor dynamischer Liste eingefügt)
 STATIC_HOSTS=(
   "google.de"
