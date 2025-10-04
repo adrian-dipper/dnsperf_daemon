@@ -165,7 +165,7 @@ else
     # Configuration file exists - check if new parameters need to be added
     echo "  Configuration file already exists: $CONFIG_DIR/dnsperf_daemon.conf"
 
-    # Define all required parameters with their default values and positions
+    # Define all required parameters with their default values
     declare -A REQUIRED_PARAMS=(
         ["SLEEP_INTERVAL"]="30  # 30 seconds between tests"
         ["DNS_SERVER"]="\"1.1.1.1\" # Cloudflare DNS server as default"
@@ -175,14 +175,25 @@ else
         ["RANDOM_SAMPLE_SIZE"]="100  # Number of domains to randomly sample from daily_hosts for testing (0 = use all)"
     )
 
-    # Define insertion order and position markers
-    declare -A INSERT_AFTER=(
+    # Define preferred insertion positions (try to insert after these lines if they exist)
+    # Otherwise append to appropriate section or end of file
+    declare -A PREFERRED_AFTER=(
         ["SLEEP_INTERVAL"]="# DNS Performance configuration"
         ["DNS_SERVER"]="SLEEP_INTERVAL="
         ["QUERIES_PER_SECOND"]="DNS_SERVER="
         ["URL"]="# Domain list configuration"
         ["DOMAIN_COUNT"]="URL="
         ["RANDOM_SAMPLE_SIZE"]="DOMAIN_COUNT="
+    )
+
+    # Define fallback section markers
+    declare -A SECTION_MARKER=(
+        ["SLEEP_INTERVAL"]="# DNS Performance configuration"
+        ["DNS_SERVER"]="# DNS Performance configuration"
+        ["QUERIES_PER_SECOND"]="# DNS Performance configuration"
+        ["URL"]="# Domain list configuration"
+        ["DOMAIN_COUNT"]="# Domain list configuration"
+        ["RANDOM_SAMPLE_SIZE"]="# Domain list configuration"
     )
 
     PARAMS_ADDED=false
@@ -200,12 +211,32 @@ else
 
             echo "  Adding missing parameter: ${param}"
 
-            # Get the line to insert after
-            AFTER_LINE="${INSERT_AFTER[$param]}"
+            # Get the preferred line to insert after
+            PREFERRED_LINE="${PREFERRED_AFTER[$param]}"
             NEW_VALUE="${REQUIRED_PARAMS[$param]}"
+            INSERTED=false
 
-            # Insert the parameter after the specified line
-            sed -i "/^${AFTER_LINE}/a ${param}=${NEW_VALUE}" "$CONFIG_DIR/dnsperf_daemon.conf"
+            # Try to insert after the preferred line if it exists
+            if grep -q "^${PREFERRED_LINE}" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+                sed -i "/^${PREFERRED_LINE}/a ${param}=${NEW_VALUE}" "$CONFIG_DIR/dnsperf_daemon.conf"
+                INSERTED=true
+            else
+                # Fallback: try to insert after the section marker
+                SECTION="${SECTION_MARKER[$param]}"
+                if grep -q "^${SECTION}" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+                    sed -i "/^${SECTION}/a ${param}=${NEW_VALUE}" "$CONFIG_DIR/dnsperf_daemon.conf"
+                    INSERTED=true
+                else
+                    # Last resort: append before STATIC_HOSTS or at the end
+                    if grep -q "^# Static host list" "$CONFIG_DIR/dnsperf_daemon.conf"; then
+                        sed -i "/^# Static host list/i ${param}=${NEW_VALUE}\n" "$CONFIG_DIR/dnsperf_daemon.conf"
+                    else
+                        echo "${param}=${NEW_VALUE}" >> "$CONFIG_DIR/dnsperf_daemon.conf"
+                    fi
+                    INSERTED=true
+                fi
+            fi
+
             PARAMS_ADDED=true
         fi
     done
