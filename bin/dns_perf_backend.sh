@@ -24,6 +24,7 @@ load_config() {
         QUERIES_PER_SECOND=20 # Number of queries per second dnsperf will wait for resolution of
         URL="http://s3-us-west-1.amazonaws.com/umbrella-static/top-1m.csv.zip"
         DOMAIN_COUNT=1000
+        RANDOM_SAMPLE_SIZE=100
         STATIC_HOSTS=(
         "google.de"
         "youtube.com"
@@ -386,9 +387,26 @@ update_hosts() {
         done < "$TEMP_FILE"
     fi
 
+    # Apply random sampling if configured and we have more domains than sample size
+    if [ "$RANDOM_SAMPLE_SIZE" -gt 0 ] && [ ${#DAILY_HOSTS[@]} -gt "$RANDOM_SAMPLE_SIZE" ]; then
+        # Use current timestamp in nanoseconds as seed for randomness
+        local seed
+        seed=$(date +%s%N)
+        log "Applying random sample: selecting $RANDOM_SAMPLE_SIZE from ${#DAILY_HOSTS[@]} daily hosts (seed: $seed)"
+
+        # Use shuf with random seed based on system time
+        local sampled_hosts=()
+        while IFS= read -r domain; do
+            sampled_hosts+=("$domain")
+        done < <(printf '%s\n' "${DAILY_HOSTS[@]}" | shuf --random-source=<(echo $seed) -n "$RANDOM_SAMPLE_SIZE")
+        DAILY_HOSTS=("${sampled_hosts[@]}")
+    elif [ "$RANDOM_SAMPLE_SIZE" -gt 0 ]; then
+        log "Daily hosts (${#DAILY_HOSTS[@]}) <= sample size ($RANDOM_SAMPLE_SIZE), using all domains"
+    fi
+
     # Combine static hosts and downloaded hosts
     HOSTS=("${STATIC_HOSTS[@]}" "${DAILY_HOSTS[@]}")
-    log "Updated host list with ${#HOSTS[@]} domains"
+    log "Updated host list with ${#HOSTS[@]} domains (${#STATIC_HOSTS[@]} static + ${#DAILY_HOSTS[@]} sampled daily)"
 }
 
 # DNS Performance test function
