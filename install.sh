@@ -63,10 +63,14 @@ if ! command -v unzip >/dev/null 2>&1; then
     MISSING_DEPS="$MISSING_DEPS unzip"
 fi
 
+if ! command -v shuf >/dev/null 2>&1; then
+    MISSING_DEPS="$MISSING_DEPS shuf(coreutils)"
+fi
+
 if [ -n "$MISSING_DEPS" ]; then
     echo "Error: Missing dependencies:$MISSING_DEPS"
     echo "Please install them first. For example:"
-    echo "  emerge -av net-dns/bind-tools net-misc/wget app-arch/unzip"
+    echo "  emerge -av net-dns/bind-tools net-misc/wget app-arch/unzip sys-apps/coreutils"
     echo "  Note: dnsperf might need to be compiled from source"
     exit 1
 fi
