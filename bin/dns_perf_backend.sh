@@ -45,7 +45,7 @@ declare HISTORY_FILE="$DAEMON_WORKDIR/dns_perf_history.txt"
 declare current_day=""
 declare last_update_day=""
 declare -a HOSTS
-declare -a RUNNING_PIDS=()  # Array to track running dnsperf PIDs
+declare DNSPERF_PID=""  # Track current dnsperf process
 
 DAILY_HOSTS=()
 
@@ -229,7 +229,29 @@ kill_child_processes() {
 cleanup() {
     log "Daemon received shutdown signal"
 
-    # Kill any running child processes with 10 second timeout
+    # Kill currently running dnsperf process if any
+    if [ -n "$DNSPERF_PID" ] && kill -0 "$DNSPERF_PID" 2>/dev/null; then
+        log "Terminating running dnsperf process (PID: $DNSPERF_PID)"
+        if kill -TERM "$DNSPERF_PID" 2>/dev/null; then
+            # Wait up to 5 seconds for graceful shutdown
+            local waited=0
+            while [ $waited -lt 5 ] && kill -0 "$DNSPERF_PID" 2>/dev/null; do
+                sleep 1
+                waited=$((waited + 1))
+            done
+
+            # Force kill if still running
+            if kill -0 "$DNSPERF_PID" 2>/dev/null; then
+                log "Force killing dnsperf process (PID: $DNSPERF_PID)"
+                kill -KILL "$DNSPERF_PID" 2>/dev/null || true
+            else
+                log "dnsperf process terminated gracefully"
+            fi
+        fi
+        DNSPERF_PID=""
+    fi
+
+    # Kill any other running child processes with 10 second timeout
     kill_child_processes 10
 
     rm -f "$DAEMON_PIDFILE"
@@ -420,23 +442,38 @@ run_dns_test() {
     # Sort and remove duplicates
     sort "$DNSPERF_FILE" | uniq >"$DNSPERF_FILE_SORTED"
 
-    # Run DNS performance test
-    local result
-    result=$(dnsperf -W -q "$QUERIES_PER_SECOND" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" 2>/dev/null | grep "Average Latency" | cut -d" " -f7)
+    # Run DNS performance test in background and capture PID
+    local dnsperf_output_file="${DAEMON_WORKDIR}/dnsperf_output.tmp"
+    dnsperf -W -q "$QUERIES_PER_SECOND" -v -s "$DNS_SERVER" -f any -d "$DNSPERF_FILE_SORTED" > "$dnsperf_output_file" 2>&1 &
+    DNSPERF_PID=$!
+    log "Started dnsperf with PID: $DNSPERF_PID"
 
-    if [ -n "$result" ]; then
-        # Store only the latest result (value only, no timestamp)
-        echo "$result" > "$LATEST_RESULT_FILE"
-        log "DNS test completed - Average Latency: ${result}ms"
-        
-        # Add result to history
-        add_to_history "$result"
-        
-        # Cleanup old history entries
-        cleanup_history
+    # Wait for dnsperf to complete
+    if wait "$DNSPERF_PID" 2>/dev/null; then
+        # Extract result from output
+        local result
+        result=$(grep "Average Latency" "$dnsperf_output_file" | cut -d" " -f7)
+
+        if [ -n "$result" ]; then
+            # Store only the latest result (value only, no timestamp)
+            echo "$result" > "$LATEST_RESULT_FILE"
+            log "DNS test completed - Average Latency: ${result}ms"
+
+            # Add result to history
+            add_to_history "$result"
+
+            # Cleanup old history entries
+            cleanup_history
+        else
+            log "DNS test failed or returned no results"
+        fi
     else
-        log "DNS test failed or returned no results"
+        log "DNS test was interrupted or failed"
     fi
+
+    # Clean up
+    DNSPERF_PID=""
+    rm -f "$dnsperf_output_file"
 }
 
 # Daemon main function
