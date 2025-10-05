@@ -389,16 +389,13 @@ update_hosts() {
 
     # Apply random sampling if configured and we have more domains than sample size
     if [ "$RANDOM_SAMPLE_SIZE" -gt 0 ] && [ ${#DAILY_HOSTS[@]} -gt "$RANDOM_SAMPLE_SIZE" ]; then
-        # Use current timestamp in nanoseconds as seed for randomness
-        local seed
-        seed=$(date +%s%N)
-        log "Applying random sample: selecting $RANDOM_SAMPLE_SIZE from ${#DAILY_HOSTS[@]} daily hosts (seed: $seed)"
+        log "Applying random sample: selecting $RANDOM_SAMPLE_SIZE from ${#DAILY_HOSTS[@]} daily hosts"
 
-        # Use shuf with random seed based on system time
+        # Use shuf to randomly sample domains
         local sampled_hosts=()
         while IFS= read -r domain; do
             sampled_hosts+=("$domain")
-        done < <(printf '%s\n' "${DAILY_HOSTS[@]}" | shuf --random-source=<(echo $seed) -n "$RANDOM_SAMPLE_SIZE")
+        done < <(printf '%s\n' "${DAILY_HOSTS[@]}" | shuf -n "$RANDOM_SAMPLE_SIZE")
         DAILY_HOSTS=("${sampled_hosts[@]}")
     elif [ "$RANDOM_SAMPLE_SIZE" -gt 0 ]; then
         log "Daily hosts (${#DAILY_HOSTS[@]}) <= sample size ($RANDOM_SAMPLE_SIZE), using all domains"

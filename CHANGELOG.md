@@ -16,6 +16,15 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - Optional multi-metric export (min / max / p95 latency)
 
 ---
+## [0.5.1] - 2025-10-05 (Bugfix: Random Sampling)
+### Fixed
+- (8340d57) Fixed random sampling returning zero domains due to faulty `--random-source` option
+  - Removed broken `--random-source=<(echo $seed)` parameter from `shuf` command
+  - The single-number seed output was insufficient for `shuf`'s random source, causing empty results
+  - Now uses `shuf`'s default `/dev/urandom` source which works correctly
+  - Resolves issue where logs showed "0 sampled daily" despite configured `RANDOM_SAMPLE_SIZE`
+
+---
 ## [0.5.0] - 2025-10-05 (Random Domain Sampling)
 ### Added
 - (419f591) Random sampling of daily hosts for variable test coverage
