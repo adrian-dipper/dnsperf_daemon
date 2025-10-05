@@ -16,6 +16,23 @@ Format (simplified Keep a Changelog): Added / Changed / Fixed / Docs / Removed /
 - Optional multi-metric export (min / max / p95 latency)
 
 ---
+## [0.5.2] - 2025-10-05 (Improved Shutdown Handling)
+### Fixed
+- (e2a7168) Improved graceful shutdown handling for dnsperf process
+  - Changed from pipe-based execution to background process with PID tracking
+  - Added dedicated cleanup for active dnsperf process in `cleanup()` function
+  - Implemented 5-second graceful shutdown timeout before force-killing dnsperf
+  - dnsperf now runs in background with output captured to temporary file
+  - Better signal handling: SIGTERM sent first, SIGKILL only if process doesn't exit
+  - `DNSPERF_PID` variable tracks current running dnsperf process
+  - Improved logging for dnsperf startup, graceful termination, and force-kill scenarios
+  - Enhanced `wait` handling to detect if dnsperf was interrupted or failed
+  - Cleanup of temporary dnsperf output files after test completion
+  - Replaced PID array with single PID variable (only one dnsperf runs at a time)
+
+_Notes:_ This release significantly improves daemon shutdown behavior, ensuring dnsperf processes are properly terminated when the daemon receives shutdown signals. The change from pipe-based to background execution allows for better process control and cleanup.
+
+---
 ## [0.5.1] - 2025-10-05 (Bugfix: Random Sampling)
 ### Fixed
 - (8340d57) Fixed random sampling returning zero domains due to faulty `--random-source` option
